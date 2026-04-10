@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GungaHacks Team Dashboard</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header>
+      <div>
+        <h1>GungaHacks Team Dashboard</h1>
+        <p class="muted">Fast status. Clear ownership. No chaos.</p>
+      </div>
+      <div class="actions">
+        <button id="exportBtn">Export JSON</button>
+        <label for="importInput" class="button-like">Import JSON</label>
+        <input id="importInput" type="file" accept="application/json" hidden />
+        <button id="resetBtn" class="danger">Reset</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="panel">
+        <h2>Team Roles</h2>
+        <form id="memberForm" class="row-form">
+          <input id="memberName" placeholder="Name" required />
+          <input id="memberStack" placeholder="Stack (Swift, React, etc.)" required />
+          <input id="memberRole" placeholder="Lane (Builder/Stability/Integrator)" required />
+          <button type="submit">Add</button>
+        </form>
+        <ul id="memberList"></ul>
+      </section>
+
+      <section class="panel">
+        <h2>Project Notes</h2>
+        <form id="noteForm" class="row-form">
+          <input id="noteInput" placeholder="Quick note / decision / blocker" required />
+          <button type="submit">Post</button>
+        </form>
+        <ul id="noteList"></ul>
+      </section>
+
+      <section class="panel">
+        <h2>Task Board</h2>
+        <form id="cardForm" class="grid-form">
+          <input id="cardTitle" placeholder="Task title" required />
+          <input id="cardOwner" placeholder="Owner" required />
+          <select id="cardPriority">
+            <option>High</option>
+            <option selected>Medium</option>
+            <option>Low</option>
+          </select>
+          <textarea id="cardNotes" placeholder="Definition of done / details"></textarea>
+          <button type="submit">Add Card</button>
+        </form>
+
+        <div class="board" id="board"></div>
+      </section>
+    </main>
+
+    <template id="memberTemplate">
+      <li>
+        <div>
+          <strong class="name"></strong>
+          <span class="muted stack"></span>
+          <span class="pill role"></span>
+        </div>
+        <button class="danger remove">Remove</button>
+      </li>
+    </template>
+
+    <template id="noteTemplate">
+      <li>
+        <div>
+          <span class="content"></span>
+          <span class="muted time"></span>
+        </div>
+        <button class="danger remove">Delete</button>
+      </li>
+    </template>
+
+    <template id="cardTemplate">
+      <article class="card">
+        <h4 class="title"></h4>
+        <p class="muted owner"></p>
+        <p class="notes"></p>
+        <div class="card-footer">
+          <span class="pill priority"></span>
+          <div class="card-actions">
+            <select class="statusSelect">
+              <option value="Ideas">Ideas</option>
+              <option value="Todo">Todo</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Done">Done</option>
+            </select>
+            <button class="danger delete">Delete</button>
+          </div>
+        </div>
+      </article>
+    </template>
+
+    <script src="app.js"></script>
+  </body>
+</html>
