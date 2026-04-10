@@ -13,6 +13,7 @@
         <p class="muted">Fast status. Clear ownership. No chaos.</p>
       </div>
       <div class="actions">
+        <button id="seedBtn">Seed Demo</button>
         <button id="exportBtn">Export JSON</button>
         <label for="importInput" class="button-like">Import JSON</label>
         <input id="importInput" type="file" accept="application/json" hidden />
@@ -42,7 +43,10 @@
       </section>
 
       <section class="panel">
-        <h2>Task Board</h2>
+        <div class="section-head">
+          <h2>Task Board</h2>
+          <div id="boardStats" class="muted"></div>
+        </div>
         <form id="cardForm" class="grid-form">
           <input id="cardTitle" placeholder="Task title" required />
           <input id="cardOwner" placeholder="Owner" required />

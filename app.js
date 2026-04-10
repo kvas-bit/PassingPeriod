@@ -14,9 +14,11 @@ const memberTemplate = document.getElementById("memberTemplate");
 const noteTemplate = document.getElementById("noteTemplate");
 const cardTemplate = document.getElementById("cardTemplate");
 
+const seedBtn = document.getElementById("seedBtn");
 const exportBtn = document.getElementById("exportBtn");
 const importInput = document.getElementById("importInput");
 const resetBtn = document.getElementById("resetBtn");
+const boardStats = document.getElementById("boardStats");
 
 memberForm.addEventListener("submit", (e) => {
   e.preventDefault();
@@ -79,6 +81,24 @@ importInput.addEventListener("change", async (e) => {
     alert("Import failed: " + err.message);
   }
   importInput.value = "";
+});
+
+seedBtn.addEventListener("click", () => {
+  state.members = [
+    { id: id(), name: "Kavi", stack: "iOS + AI automation", role: "Integrator" },
+    { id: id(), name: "Teammate A", stack: "LeetCode / CS", role: "Builder" },
+    { id: id(), name: "Teammate B", stack: "Frontend + docs", role: "Stability" },
+  ];
+  state.notes = [
+    { id: id(), content: "Demo path first. No architecture debates mid-sprint.", at: new Date().toISOString() },
+    { id: id(), content: "Vibe lane: UI states/docs/tests only.", at: new Date().toISOString() },
+  ];
+  state.cards = [
+    { id: id(), title: "Lock project scope", owner: "Kavi", priority: "High", notes: "Freeze core deliverable in 10 minutes.", status: "Todo" },
+    { id: id(), title: "Build core feature", owner: "Teammate A", priority: "High", notes: "Ship vertical slice.", status: "In Progress" },
+    { id: id(), title: "Polish empty/error states", owner: "Teammate B", priority: "Medium", notes: "Safe lane work.", status: "Ideas" },
+  ];
+  persistAndRender();
 });
 
 resetBtn.addEventListener("click", () => {
@@ -172,6 +192,12 @@ function render() {
   renderMembers();
   renderNotes();
   renderBoard();
+  renderStats();
+}
+
+function renderStats() {
+  const counts = statuses.map((s) => `${s}: ${state.cards.filter((c) => c.status === s).length}`).join(" • ");
+  boardStats.textContent = `${state.cards.length} total cards • ${counts}`;
 }
 
 function loadState() {
