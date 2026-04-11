@@ -77,6 +77,55 @@ struct GeminiService {
         )
     }
 
+    static func cleanupNotes(currentText: String, imageData: Data?) async throws -> CleanedNotesResult {
+        let trimmed = currentText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { throw GeminiError.parseError }
+
+        let prompt = """
+        You clean up OCR'd class notes conservatively.
+
+        Rules:
+        - preserve meaning exactly
+        - fix obvious OCR mistakes, spacing, punctuation, and broken line breaks
+        - keep bullets and sections when they help readability
+        - do NOT add new facts that are not in the text or image
+        - if something is unclear, leave it cautious instead of inventing
+
+        Return JSON only with this exact shape:
+        {
+          "cleaned_text": "rewritten but faithful notes",
+          "change_summary": "one short sentence saying what you cleaned"
+        }
+
+        Existing note text:
+        \(truncateForPrompt(trimmed))
+        """
+
+        let raw: String
+        if let imageData {
+            raw = try await requestMultimodal(
+                prompt: prompt,
+                imageData: imageData,
+                model: flashOCRModelName,
+                jsonMode: true,
+                temperature: 0.1
+            )
+        } else {
+            raw = try await request(prompt: prompt, jsonMode: true, temperature: 0.1)
+        }
+
+        let cleaned = stripCodeFences(raw)
+        guard let data = cleaned.data(using: .utf8) else { throw GeminiError.parseError }
+        let payload = try JSONDecoder().decode(CleanedNotesResponse.self, from: data)
+        let cleanedText = payload.cleanedText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanedText.isEmpty else { throw GeminiError.parseError }
+
+        return CleanedNotesResult(
+            cleanedText: cleanedText,
+            changeSummary: nilIfEmpty(payload.changeSummary)
+        )
+    }
+
     // MARK: - Generate Questions (with automatic fallback)
 
     /// Primary entry point. Always returns at least fallback questions so the
@@ -446,6 +495,11 @@ private struct AnchorEnvelope: Codable {
     let anchors: [StudyAnchor]
 }
 
+struct CleanedNotesResult {
+    let cleanedText: String
+    let changeSummary: String?
+}
+
 private struct OCRResponse: Decodable {
     let rawText: String
     let title: String?
@@ -468,6 +522,16 @@ private struct OCRResponse: Decodable {
         likelyTopic = try container.decodeIfPresent(String.self, forKey: .likelyTopic)
         confidence = try container.decodeIfPresent(String.self, forKey: .confidence)
         unreadableRegions = try container.decodeIfPresent([String].self, forKey: .unreadableRegions) ?? []
+    }
+}
+
+private struct CleanedNotesResponse: Decodable {
+    let cleanedText: String
+    let changeSummary: String?
+
+    enum CodingKeys: String, CodingKey {
+        case cleanedText = "cleaned_text"
+        case changeSummary = "change_summary"
     }
 }
 
