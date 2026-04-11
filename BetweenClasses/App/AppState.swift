@@ -29,6 +29,7 @@ enum AppTab: Int, CaseIterable {
 final class AppState {
     var isOnboarded: Bool
     var selectedTab: AppTab = .home
+    var colorCodingEnabled: Bool
     var quizSubject: Subject?
     var quizTopicName: String?
     var quizNoteIDs: [UUID] = []
@@ -38,6 +39,7 @@ final class AppState {
 
     init() {
         self.isOnboarded = UserDefaults.standard.bool(forKey: "bc_onboarded")
+        self.colorCodingEnabled = UserDefaults.standard.object(forKey: "bc_color_coding_enabled") as? Bool ?? true
         self.quizStreak = UserDefaults.standard.integer(forKey: "bc_streak")
         self.sessionsToday = UserDefaults.standard.integer(forKey: "bc_sessions_today")
     }
@@ -50,6 +52,11 @@ final class AppState {
     func recordSession() {
         sessionsToday += 1
         UserDefaults.standard.set(sessionsToday, forKey: "bc_sessions_today")
+    }
+
+    func setColorCodingEnabled(_ enabled: Bool) {
+        colorCodingEnabled = enabled
+        UserDefaults.standard.set(enabled, forKey: "bc_color_coding_enabled")
     }
 
     func startQuiz(for subject: Subject, topicName: String? = nil, noteIDs: [UUID] = []) {
