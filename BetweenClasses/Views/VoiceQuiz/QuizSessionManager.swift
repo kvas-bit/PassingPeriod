@@ -32,15 +32,29 @@ final class QuizSessionManager {
         self.modelContext = modelContext
     }
 
-    func start(subject: Subject) async {
+    func start(subject: Subject, topicName: String? = nil, noteIDs: [UUID] = []) async {
         errorMessage = nil
-        var allQuestions = subject.notes.flatMap { $0.questions }
+
+        let scopedNotes: [Note]
+        if !noteIDs.isEmpty {
+            let noteIDSet = Set(noteIDs)
+            scopedNotes = subject.notes.filter { noteIDSet.contains($0.id) }
+        } else if let topicName, !topicName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            scopedNotes = subject.notes.filter {
+                $0.topicName.trimmingCharacters(in: .whitespacesAndNewlines).localizedCaseInsensitiveCompare(topicName) == .orderedSame
+            }
+        } else {
+            scopedNotes = subject.notes
+        }
+
+        var allQuestions = scopedNotes.flatMap { $0.questions }
 
         // Issue A: fallback questions when notes have text but Gemini never ran
         if allQuestions.isEmpty {
-            let notesWithText = subject.notes.filter { !$0.extractedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+            let notesWithText = scopedNotes.filter { !$0.extractedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
             if notesWithText.isEmpty {
-                statusLabel = "No notes for \(subject.name) yet — capture notes first."
+                let scopeLabel = topicName ?? subject.name
+                statusLabel = "No notes for \(scopeLabel) yet — capture notes first."
                 state = .noContent
                 return
             }

@@ -30,6 +30,8 @@ final class AppState {
     var isOnboarded: Bool
     var selectedTab: AppTab = .home
     var quizSubject: Subject?
+    var quizTopicName: String?
+    var quizNoteIDs: [UUID] = []
     var showQuiz: Bool = false
     var quizStreak: Int
     var sessionsToday: Int
@@ -50,9 +52,19 @@ final class AppState {
         UserDefaults.standard.set(sessionsToday, forKey: "bc_sessions_today")
     }
 
-    func startQuiz(for subject: Subject) {
+    func startQuiz(for subject: Subject, topicName: String? = nil, noteIDs: [UUID] = []) {
         quizSubject = subject
+        quizTopicName = topicName
+        quizNoteIDs = noteIDs
         showQuiz = true
         selectedTab = .quiz
     }
+
+    func clearQuizSelection() {
+        quizSubject = nil
+        quizTopicName = nil
+        quizNoteIDs = []
+        showQuiz = false
+    }
 }
+
