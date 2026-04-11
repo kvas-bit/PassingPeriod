@@ -25,7 +25,19 @@ struct GeminiService {
     /// Low-level call — throws on any failure. Prefer `generateQuestionsWithFallback`.
     static func generateQuestions(from text: String, noteID: UUID) async throws -> [QuizQuestion] {
         let prompt = """
-        Generate exactly 5 active recall question-and-answer pairs from the following notes.
+        You are generating active recall questions for a university student reviewing their class notes.
+        Generate exactly 5 questions that test DEEP understanding — not surface definitions.
+
+        Question types to include (mix these):
+        - HOW/WHY questions: mechanisms, causality, processes ("How does X work?", "Why does X cause Y?")
+        - CONNECTION questions: relationships between concepts ("How does X relate to Y?", "What's the difference between X and Y?")
+        - APPLICATION questions: real-world or scenario use ("In what situation would you use X?", "Give an example of X in practice")
+        - SYNTHESIS questions: big-picture ("What is the key takeaway about X?", "How do these concepts fit together?")
+
+        AVOID questions like "What is the definition of X?" or "What does X stand for?" — those are too surface-level.
+        Make questions conversational since they will be spoken aloud.
+        Expected answers should be 1-3 sentences that would count as a correct spoken response.
+
         Return ONLY a valid JSON array with no markdown, no code fences.
         Format: [{"question": "...", "expectedAnswer": "..."}]
 
@@ -96,13 +108,18 @@ struct GeminiService {
 
     static func evaluateAnswer(question: String, expected: String, userAnswer: String) async throws -> EvaluationResult {
         let prompt = """
-        You are an educational AI evaluating a student's spoken answer.
+        You are an educational AI evaluating a student's spoken answer during active recall practice.
         Return ONLY valid JSON with no markdown, no code fences.
-        Format: {"correct": true/false, "feedback": "one encouraging sentence of feedback"}
+        Format: {"correct": true/false, "feedback": "...", "explanation": "..."}
+
+        Rules:
+        - "correct": true if the student captured the core concept (doesn't need to be word-perfect)
+        - "feedback": 1 sentence — if correct, affirm what they got right; if wrong, gently say what was missing
+        - "explanation": if correct, empty string ""; if wrong, give a clear 1-2 sentence explanation of the correct answer so they actually learn it
 
         Question: \(question)
         Expected answer: \(expected)
-        Student said: \(userAnswer)
+        Student said: \(userAnswer.isEmpty ? "(no answer given)" : userAnswer)
         """
 
         let raw = try await request(prompt: prompt)
@@ -115,7 +132,7 @@ struct GeminiService {
         guard let data = cleaned.data(using: .utf8),
               let result = try? JSONDecoder().decode(EvaluationResult.self, from: data) else {
             // Fallback: mark as correct if answer is non-empty
-            return EvaluationResult(correct: !userAnswer.isEmpty, feedback: "Good effort, keep going!")
+            return EvaluationResult(correct: !userAnswer.isEmpty, feedback: "Good effort, keep going!", explanation: nil)
         }
         return result
     }
@@ -161,6 +178,7 @@ struct QAPair: Decodable {
 struct EvaluationResult: Decodable {
     let correct: Bool
     let feedback: String
+    let explanation: String?  // Correct answer explanation spoken when wrong
 }
 
 enum GeminiError: Error, LocalizedError {

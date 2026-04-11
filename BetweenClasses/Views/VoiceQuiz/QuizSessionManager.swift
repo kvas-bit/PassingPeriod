@@ -178,18 +178,22 @@ final class QuizSessionManager {
                 userAnswer: transcript
             )
         } catch {
-            result = EvaluationResult(correct: false, feedback: "Let's keep going.")
+            result = EvaluationResult(correct: false, feedback: "Let's keep going.", explanation: nil)
         }
 
         question.wasCorrect = result.correct
         if result.correct { session?.score += 1 }
 
-        // Speak feedback
+        // Speak feedback — if wrong, also explain the correct answer so they learn
         state = .speaking
-        let feedbackText = result.correct
-            ? "Correct! \(result.feedback)"
-            : "Not quite. \(result.feedback)"
-        statusLabel = feedbackText  // Show feedback text on screen regardless of TTS
+        var feedbackText: String
+        if result.correct {
+            feedbackText = "Correct! \(result.feedback)"
+        } else {
+            let explanation = result.explanation.flatMap { $0.isEmpty ? nil : $0 } ?? question.expectedAnswer
+            feedbackText = "Not quite. \(result.feedback) Here's what to remember: \(explanation)"
+        }
+        statusLabel = feedbackText
 
         do {
             try await tts.speak(feedbackText)
