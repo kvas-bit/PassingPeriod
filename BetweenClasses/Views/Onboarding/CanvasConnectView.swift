@@ -28,14 +28,14 @@ struct CanvasConnectView: View {
 
                         Text("Generate at: Canvas → Account → Settings → Approved Integrations → New Access Token")
                             .bcCaption()
-                            .foregroundStyle(.textTertiary)
+                            .foregroundStyle(Color.textTertiary)
 
                         // iCal section
                         sectionHeader("iCal Schedule (optional)", icon: "calendar")
                         inputField(label: "iCal URL", placeholder: "webcal://...", text: $icalURL)
                         Text("Export from your university portal or Blue.")
                             .bcCaption()
-                            .foregroundStyle(.textTertiary)
+                            .foregroundStyle(Color.textTertiary)
 
                         // API Keys section
                         sectionHeader("API Keys", icon: "key.fill")
@@ -78,7 +78,7 @@ struct CanvasConnectView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
-                        .foregroundStyle(.textSecond)
+                        .foregroundStyle(Color.textSecond)
                 }
             }
             .toolbarBackground(Color.bgPrimary, for: .navigationBar)
@@ -89,10 +89,10 @@ struct CanvasConnectView: View {
         HStack(spacing: 8) {
             Image(systemName: icon)
                 .font(.system(size: 12))
-                .foregroundStyle(.textSecond)
+                .foregroundStyle(Color.textSecond)
             Text(title.uppercased())
                 .bcCaption()
-                .foregroundStyle(.textSecond)
+                .foregroundStyle(Color.textSecond)
         }
     }
 
@@ -100,10 +100,10 @@ struct CanvasConnectView: View {
         VStack(alignment: .leading, spacing: 6) {
             Text(label)
                 .bcCaption()
-                .foregroundStyle(.textSecond)
+                .foregroundStyle(Color.textSecond)
             TextField(placeholder, text: text)
                 .bcBody()
-                .foregroundStyle(.textPrimary)
+                .foregroundStyle(Color.textPrimary)
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
                 .padding(.horizontal, 14)
@@ -116,10 +116,10 @@ struct CanvasConnectView: View {
         VStack(alignment: .leading, spacing: 6) {
             Text(label)
                 .bcCaption()
-                .foregroundStyle(.textSecond)
+                .foregroundStyle(Color.textSecond)
             SecureField(placeholder, text: text)
                 .bcBody()
-                .foregroundStyle(.textPrimary)
+                .foregroundStyle(Color.textPrimary)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 12)
                 .glassCard(cornerRadius: 12)

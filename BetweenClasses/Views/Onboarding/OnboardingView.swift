@@ -23,14 +23,14 @@ struct OnboardingView: View {
 
                     Text("Between Classes")
                         .bcDisplay()
-                        .foregroundStyle(.textPrimary)
+                        .foregroundStyle(Color.textPrimary)
                         .opacity(appeared ? 1 : 0)
                         .offset(y: appeared ? 0 : 20)
                         .animation(.spring(response: 0.5, dampingFraction: 0.7).delay(0.2), value: appeared)
 
                     Text("Active recall. Hands-free.")
                         .bcBody()
-                        .foregroundStyle(.textSecond)
+                        .foregroundStyle(Color.textSecond)
                         .opacity(appeared ? 1 : 0)
                         .offset(y: appeared ? 0 : 20)
                         .animation(.spring(response: 0.5, dampingFraction: 0.7).delay(0.25), value: appeared)
@@ -71,7 +71,7 @@ struct OnboardingView: View {
                     } label: {
                         Text("Skip for now")
                             .bcBody()
-                            .foregroundStyle(.textSecond)
+                            .foregroundStyle(Color.textSecond)
                     }
                     .buttonStyle(.plain)
                 }
@@ -101,7 +101,7 @@ private struct FeatureRow: View {
                 .frame(width: 32)
             Text(text)
                 .bcBody()
-                .foregroundStyle(.textPrimary)
+                .foregroundStyle(Color.textPrimary)
             Spacer()
         }
     }

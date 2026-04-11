@@ -20,7 +20,7 @@ final class QuizSessionManager {
     var ttsAmplitude: Float = 0
     var micAmplitude: Float = 0
 
-    private var questions: [QuizQuestion] = []
+    private(set) var questions: [QuizQuestion] = []
     private var session: QuizSession?
     private let tts = ElevenLabsService()
     private let stt = SpeechService()

@@ -19,12 +19,12 @@ struct ClassRowView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(subject.name)
                         .bcBody()
-                        .foregroundStyle(.textPrimary)
+                        .foregroundStyle(Color.textPrimary)
 
                     if let ct = subject.nextClassTime {
                         Text(ct.displayTime)
                             .bcCaption()
-                            .foregroundStyle(.textSecond)
+                            .foregroundStyle(Color.textSecond)
                     }
                 }
 
@@ -38,7 +38,7 @@ struct ClassRowView: View {
 
                 Image(systemName: "chevron.right")
                     .font(.system(size: 12))
-                    .foregroundStyle(.textTertiary)
+                    .foregroundStyle(Color.textTertiary)
             }
             .padding(.vertical, 4)
         }
@@ -69,13 +69,13 @@ private struct SubjectDetailSheet: View {
                                 VStack(spacing: 8) {
                                     Image(systemName: "doc.text")
                                         .font(.system(size: 32))
-                                        .foregroundStyle(.textTertiary)
+                                        .foregroundStyle(Color.textTertiary)
                                     Text("No notes yet")
                                         .bcBody()
-                                        .foregroundStyle(.textSecond)
+                                        .foregroundStyle(Color.textSecond)
                                     Text("Capture notes after class to start quizzing.")
                                         .bcCaption()
-                                        .foregroundStyle(.textTertiary)
+                                        .foregroundStyle(Color.textTertiary)
                                         .multilineTextAlignment(.center)
                                 }
                                 .frame(maxWidth: .infinity)
@@ -87,10 +87,10 @@ private struct SubjectDetailSheet: View {
                                     VStack(alignment: .leading, spacing: 6) {
                                         Text(note.extractedText.prefix(120) + (note.extractedText.count > 120 ? "…" : ""))
                                             .bcCaption()
-                                            .foregroundStyle(.textSecond)
+                                            .foregroundStyle(Color.textSecond)
                                         Text(note.createdAt.formatted(date: .abbreviated, time: .shortened))
                                             .bcCaption()
-                                            .foregroundStyle(.textTertiary)
+                                            .foregroundStyle(Color.textTertiary)
                                     }
                                 }
                             }
@@ -120,7 +120,7 @@ private struct SubjectDetailSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Done") { dismiss() }
-                        .foregroundStyle(.textSecond)
+                        .foregroundStyle(Color.textSecond)
                 }
             }
             .toolbarBackground(Color.bgPrimary, for: .navigationBar)

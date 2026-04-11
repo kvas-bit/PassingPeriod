@@ -41,7 +41,7 @@ struct KnowledgeGraphView: View {
                 HStack {
                     Text("Knowledge Graph")
                         .bcCaption()
-                        .foregroundStyle(.textSecond)
+                        .foregroundStyle(Color.textSecond)
                         .textCase(.uppercase)
                         .padding(.horizontal, 20)
                         .padding(.top, 60)
@@ -51,7 +51,7 @@ struct KnowledgeGraphView: View {
                             withAnimation { selectedNode = nil }
                         }
                         .bcCaption()
-                        .foregroundStyle(.textSecond)
+                        .foregroundStyle(Color.textSecond)
                         .padding(.trailing, 20)
                         .padding(.top, 60)
                     }
@@ -76,16 +76,16 @@ struct KnowledgeGraphView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(node.label)
                         .bcBody()
-                        .foregroundStyle(.textPrimary)
+                        .foregroundStyle(Color.textPrimary)
                         .lineLimit(1)
                     if node.type == .subject {
                         Text("\(node.noteCount) note\(node.noteCount == 1 ? "" : "s")")
                             .bcCaption()
-                            .foregroundStyle(.textSecond)
+                            .foregroundStyle(Color.textSecond)
                     } else {
                         Text("Topic note")
                             .bcCaption()
-                            .foregroundStyle(.textSecond)
+                            .foregroundStyle(Color.textSecond)
                     }
                 }
                 Spacer()
@@ -97,13 +97,13 @@ struct KnowledgeGraphView: View {
         VStack(spacing: 16) {
             Image(systemName: "circle.hexagongrid")
                 .font(.system(size: 48))
-                .foregroundStyle(.textTertiary)
+                .foregroundStyle(Color.textTertiary)
             Text("No data yet")
                 .bcHeadline()
-                .foregroundStyle(.textPrimary)
+                .foregroundStyle(Color.textPrimary)
             Text("Add notes and subjects to see your knowledge graph.")
                 .bcBody()
-                .foregroundStyle(.textSecond)
+                .foregroundStyle(Color.textSecond)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 40)
         }

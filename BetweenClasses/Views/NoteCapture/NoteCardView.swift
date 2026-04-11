@@ -26,7 +26,7 @@ struct NoteCardView: View {
                     )
                     .frame(width: 80, height: 70)
                     Image(systemName: "doc.text")
-                        .foregroundStyle(.textTertiary)
+                        .foregroundStyle(Color.textTertiary)
                         .font(.system(size: 18))
                 }
             }
@@ -34,7 +34,7 @@ struct NoteCardView: View {
             // Subject label
             Text(subjectName)
                 .bcCaption()
-                .foregroundStyle(.textSecond)
+                .foregroundStyle(Color.textSecond)
                 .lineLimit(1)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 6)

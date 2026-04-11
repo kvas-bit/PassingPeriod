@@ -18,8 +18,9 @@ struct ClassTime: Codable, Identifiable, Hashable {
     }
 
     var displayTime: String {
-        let startStr = String(format: "%d:%02d", startHour > 12 ? startHour - 12 : startHour, startMin)
-        let endStr   = String(format: "%d:%02d", endHour > 12 ? endHour - 12 : endHour, endMin)
+        func to12(_ h: Int) -> Int { h == 0 ? 12 : (h > 12 ? h - 12 : h) }
+        let startStr = String(format: "%d:%02d", to12(startHour), startMin)
+        let endStr   = String(format: "%d:%02d", to12(endHour), endMin)
         let ampm     = endHour >= 12 ? "PM" : "AM"
         return "\(startStr)–\(endStr) \(ampm)"
     }

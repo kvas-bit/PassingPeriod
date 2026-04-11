@@ -13,14 +13,14 @@ struct SubjectCardView: View {
                         .frame(width: 8, height: 8)
                     Text(subject.name)
                         .bcBody()
-                        .foregroundStyle(.textPrimary)
+                        .foregroundStyle(Color.textPrimary)
                         .lineLimit(1)
                     Spacer()
                 }
 
                 Text("\(subject.notes.count) note\(subject.notes.count == 1 ? "" : "s")")
                     .bcCaption()
-                    .foregroundStyle(.textSecond)
+                    .foregroundStyle(Color.textSecond)
 
                 if subject.isFreeWindow {
                     WhitePill(text: "Free now")
