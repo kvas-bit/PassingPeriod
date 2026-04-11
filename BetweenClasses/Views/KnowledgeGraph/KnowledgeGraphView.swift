@@ -3,6 +3,11 @@ import SwiftData
 import SceneKit
 import UIKit
 
+/// SceneKit's default `SCNView` can join the keyboard/focus system on iOS and logs focus cache warnings; the graph is pointer-driven only.
+final class NonFocusableSCNView: SCNView {
+    override var canBecomeFocused: Bool { false }
+}
+
 struct KnowledgeGraphView: View {
     @Query private var subjects: [Subject]
     @State private var selectedNode: GraphNode?
@@ -196,7 +201,7 @@ struct SCNViewWrapper: UIViewRepresentable {
     }
 
     func makeUIView(context: Context) -> SCNView {
-        let view = SCNView()
+        let view = NonFocusableSCNView()
         view.backgroundColor = UIColor(red: 0.031, green: 0.035, blue: 0.039, alpha: 1)
         view.antialiasingMode = .multisampling4X
 
@@ -396,9 +401,10 @@ struct SCNViewWrapper: UIViewRepresentable {
         @objc func handleTap(_ gesture: UITapGestureRecognizer) {
             guard let view = scnView, let scene else { return }
             let point = gesture.location(in: view)
+            // SceneKit expects Obj-C types in this dictionary; Swift enums/bool may bridge as __SwiftValue and crash in -integerValue.
             let hits = view.hitTest(point, options: [
-                SCNHitTestOption.searchMode: SCNHitTestSearchMode.closest,
-                SCNHitTestOption.ignoreHiddenNodes: true,
+                SCNHitTestOption.searchMode: NSNumber(value: SCNHitTestSearchMode.closest.rawValue),
+                SCNHitTestOption.ignoreHiddenNodes: NSNumber(value: true),
             ])
             guard let hit = hits.first,
                   let name = hit.node.name,
