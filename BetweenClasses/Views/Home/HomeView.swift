@@ -135,9 +135,17 @@ private struct NextClassCard: View {
     @Environment(AppState.self) private var appState
 
     var timeLabel: String {
-        guard let mins = subject.minutesUntilNext else { return "Now" }
-        if mins < 60 { return "In \(mins) min" }
-        return "In \(mins / 60)h \(mins % 60)m"
+        guard let mins = subject.minutesUntilNext else { return "Soon" }
+        if mins < 1   { return "Now" }
+        if mins < 60  { return "In \(mins) min" }
+        let hours = mins / 60
+        if hours < 24 {
+            let rem = mins % 60
+            return rem > 0 ? "In \(hours)h \(rem)m" : "In \(hours)h"
+        }
+        let days = hours / 24
+        if days == 1 { return "Tomorrow" }
+        return subject.nextClassTime?.weekdayName ?? "Upcoming"
     }
 
     var body: some View {
