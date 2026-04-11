@@ -47,7 +47,6 @@ struct VoiceQuizView: View {
         .onAppear {
             manager.configure(modelContext: modelContext)
             appeared = true
-            // Do NOT auto-start — user must tap Start to avoid wasting API calls
         }
         .onDisappear {
             manager.stop()
@@ -69,9 +68,35 @@ struct VoiceQuizView: View {
                             .bcHeadline()
                             .foregroundStyle(Color.textPrimary)
                         let qCount = appState.quizSubject?.notes.flatMap { $0.questions }.count ?? 0
-                        Text(qCount > 0 ? "\(min(qCount, 5)) questions" : "No questions yet")
-                            .bcBody()
-                            .foregroundStyle(Color.textSecond)
+                        let hasNoteText = appState.quizSubject?.notes.contains { !$0.extractedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty } ?? false
+                        if qCount > 0 {
+                            Text("\(min(qCount, 5)) questions ready")
+                                .bcBody()
+                                .foregroundStyle(Color.textSecond)
+                        } else if hasNoteText {
+                            Text("Will generate questions from your notes")
+                                .bcBody()
+                                .foregroundStyle(Color.textSecond)
+                        } else {
+                            Text("No questions yet — capture notes first")
+                                .bcBody()
+                                .foregroundStyle(Color.textSecond)
+                        }
+                    }
+
+                    // Error banner (e.g. API key missing from a prior attempt)
+                    if let err = manager.errorMessage {
+                        HStack(spacing: 8) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .font(.system(size: 13))
+                            Text(err)
+                                .bcCaption()
+                                .multilineTextAlignment(.leading)
+                        }
+                        .foregroundStyle(Color.orange)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(Color.orange.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))
                     }
 
                     Button {
@@ -106,17 +131,19 @@ struct VoiceQuizView: View {
     }
 
     private var noContentView: some View {
-        VStack(spacing: 32) {
+        let subjectName = appState.quizSubject?.name ?? "this subject"
+        return VStack(spacing: 32) {
             Spacer()
             GlassCard {
                 VStack(spacing: 20) {
                     Image(systemName: "doc.text.magnifyingglass")
                         .font(.system(size: 48))
                         .foregroundStyle(Color.textTertiary)
-                    Text("No Notes Yet")
+                    Text("No Notes for \(subjectName)")
                         .bcHeadline()
                         .foregroundStyle(Color.textPrimary)
-                    Text("Capture notes from class first, then come back to quiz yourself.")
+                        .multilineTextAlignment(.center)
+                    Text("Capture notes from \(subjectName) first, then come back to quiz yourself.")
                         .bcBody()
                         .foregroundStyle(Color.textSecond)
                         .multilineTextAlignment(.center)
@@ -129,6 +156,12 @@ struct VoiceQuizView: View {
                     .padding(.vertical, 14)
                     .background(Color.white, in: RoundedRectangle(cornerRadius: 12))
                     .buttonStyle(.plain)
+
+                    Button("Back") {
+                        manager.state = .idle
+                    }
+                    .bcCaption()
+                    .foregroundStyle(Color.textSecond)
                 }
             }
             .padding(.horizontal, 24)
@@ -161,8 +194,8 @@ struct VoiceQuizView: View {
                 Divider()
                     .background(Color.glassStroke)
 
-                // Question text
-                VStack {
+                // Question text — always visible
+                VStack(spacing: 8) {
                     if let q = manager.currentQuestion {
                         Text(q.question)
                             .bcHeadline()
@@ -173,10 +206,18 @@ struct VoiceQuizView: View {
                             .transition(.opacity.combined(with: .scale(scale: 0.97)))
                             .id(q.id)
                     } else {
-                        Text(manager.state == .idle ? "Preparing quiz…" : "…")
+                        Text("Preparing quiz…")
                             .bcHeadline()
                             .foregroundStyle(Color.textSecond)
                             .padding(28)
+                    }
+
+                    // State label inside card (evaluating / feedback text)
+                    if case .evaluating = manager.state {
+                        Text("Evaluating your answer…")
+                            .bcCaption()
+                            .foregroundStyle(Color.textTertiary)
+                            .padding(.bottom, 8)
                     }
                 }
 
@@ -203,6 +244,8 @@ struct VoiceQuizView: View {
             Text(manager.statusLabel)
                 .bcCaption()
                 .foregroundStyle(Color.textSecond)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
                 .opacity(manager.statusLabel.isEmpty ? 0 : 1)
                 .animation(.easeInOut(duration: 0.3), value: manager.statusLabel)
 
