@@ -4,6 +4,10 @@ import SwiftData
 struct OCRConfirmView: View {
     let imageData: Data
     let extractedText: String
+    let ocrSourceSummary: String?
+    let ocrConfidenceSummary: String?
+    let suggestedTopicName: String?
+    let unreadableRegions: [String]
     let onSave: (Note) -> Void
     /// When non-nil, a "Save & Capture Another" button is shown. Caller should
     /// dismiss the sheet and return to the camera when this fires.
@@ -21,10 +25,18 @@ struct OCRConfirmView: View {
 
     init(imageData: Data,
          extractedText: String,
+         ocrSourceSummary: String? = nil,
+         ocrConfidenceSummary: String? = nil,
+         suggestedTopicName: String? = nil,
+         unreadableRegions: [String] = [],
          onSave: @escaping (Note) -> Void,
          onCaptureAnother: (() -> Void)? = nil) {
         self.imageData = imageData
         self.extractedText = extractedText
+        self.ocrSourceSummary = ocrSourceSummary
+        self.ocrConfidenceSummary = ocrConfidenceSummary
+        self.suggestedTopicName = suggestedTopicName
+        self.unreadableRegions = unreadableRegions
         self.onSave = onSave
         self.onCaptureAnother = onCaptureAnother
         self._editedText = State(initialValue: extractedText)
@@ -64,6 +76,35 @@ struct OCRConfirmView: View {
                                     )
                             }
                             Spacer()
+                        }
+
+                        if ocrSourceSummary != nil || ocrConfidenceSummary != nil || !unreadableRegions.isEmpty {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("OCR")
+                                    .bcCaption()
+                                    .foregroundStyle(Color.textSecond)
+                                    .textCase(.uppercase)
+
+                                VStack(alignment: .leading, spacing: 6) {
+                                    if let ocrSourceSummary {
+                                        Text("Source: \(ocrSourceSummary)")
+                                            .bcBody()
+                                            .foregroundStyle(Color.textPrimary)
+                                    }
+                                    if let ocrConfidenceSummary {
+                                        Text(ocrConfidenceSummary)
+                                            .font(.system(size: 12, weight: .medium))
+                                            .foregroundStyle(Color.textTertiary)
+                                    }
+                                    if !unreadableRegions.isEmpty {
+                                        Text("Unreadable bits: \(unreadableRegions.prefix(2).joined(separator: " • "))")
+                                            .font(.system(size: 12, weight: .medium))
+                                            .foregroundStyle(Color.textTertiary)
+                                    }
+                                }
+                                .padding(16)
+                                .glassCard(cornerRadius: 12)
+                            }
                         }
 
                         // Extracted text editor
@@ -116,10 +157,23 @@ struct OCRConfirmView: View {
                         }
 
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("Topic / Lecture")
-                                .bcCaption()
-                                .foregroundStyle(Color.textSecond)
-                                .textCase(.uppercase)
+                            HStack {
+                                Text("Topic / Lecture")
+                                    .bcCaption()
+                                    .foregroundStyle(Color.textSecond)
+                                    .textCase(.uppercase)
+                                Spacer()
+                                if let suggestedTopicName,
+                                   !suggestedTopicName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                    Button("Use suggestion") {
+                                        customTopicName = suggestedTopicName
+                                        selectedExistingTopic = ""
+                                    }
+                                    .buttonStyle(.plain)
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundStyle(Color.textSecond)
+                                }
+                            }
 
                             if !existingTopics.isEmpty {
                                 Menu {
@@ -231,6 +285,11 @@ struct OCRConfirmView: View {
         .onAppear {
             selectedSubject = subjects.first
             selectedExistingTopic = subjects.first?.topicNames.first ?? ""
+            if let suggestedTopicName,
+               !suggestedTopicName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+               selectedExistingTopic.isEmpty {
+                customTopicName = suggestedTopicName
+            }
         }
         .onChange(of: selectedSubject?.id) { _, _ in
             selectedExistingTopic = selectedSubject?.topicNames.first ?? ""
@@ -256,7 +315,7 @@ struct OCRConfirmView: View {
         UINotificationFeedbackGenerator().notificationOccurred(.success)
 
         // Pre-generate questions asynchronously (with fallback)
-        Task {
+        Task { @MainActor in
             let questions = await GeminiService.generateQuestionsWithFallback(
                 from: editedText,
                 noteID: note.id
