@@ -32,11 +32,11 @@ final class Subject {
         }
     }
 
-    /// Next upcoming class time from now, if any
+    /// Next upcoming class time (looks ahead across the whole week, not just today)
     var nextClassTime: ClassTime? {
         scheduleTimes
             .compactMap { ct -> (ClassTime, Int)? in
-                guard let mins = ct.minutesUntilToday() else { return nil }
+                guard let mins = ct.minutesUntilNextWeeklyOccurrence() else { return nil }
                 return (ct, mins)
             }
             .sorted { $0.1 < $1.1 }
@@ -45,7 +45,7 @@ final class Subject {
 
     var minutesUntilNext: Int? {
         scheduleTimes
-            .compactMap { $0.minutesUntilToday() }
+            .compactMap { $0.minutesUntilNextWeeklyOccurrence() }
             .min()
     }
 
