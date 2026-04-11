@@ -18,6 +18,7 @@ final class QuizSessionManager {
     var currentQuestion: QuizQuestion?
     var currentIndex: Int = 0
     var statusLabel: String = ""
+    var errorMessage: String? = nil
     var ttsAmplitude: Float = 0
     var micAmplitude: Float = 0
 
@@ -32,12 +33,20 @@ final class QuizSessionManager {
     }
 
     func start(subject: Subject) async {
-        let allQuestions = subject.notes.flatMap { $0.questions }
-        guard !allQuestions.isEmpty else {
-            statusLabel = "No notes for \(subject.name) yet — capture notes first."
-            state = .noContent
-            return
+        errorMessage = nil
+        var allQuestions = subject.notes.flatMap { $0.questions }
+
+        // Issue A: fallback questions when notes have text but Gemini never ran
+        if allQuestions.isEmpty {
+            let notesWithText = subject.notes.filter { !$0.extractedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+            if notesWithText.isEmpty {
+                statusLabel = "No notes for \(subject.name) yet — capture notes first."
+                state = .noContent
+                return
+            }
+            allQuestions = generateFallbackQuestions(from: notesWithText)
         }
+
         questions = Array(allQuestions.shuffled().prefix(5))
         currentIndex = 0
 
@@ -55,6 +64,37 @@ final class QuizSessionManager {
         state = .idle
     }
 
+    // MARK: - Fallback question generation
+
+    private func generateFallbackQuestions(from notes: [Note]) -> [QuizQuestion] {
+        var result: [QuizQuestion] = []
+        for note in notes {
+            let text = note.extractedText
+            // Split into sentences and produce simple recall questions
+            let sentences = text
+                .components(separatedBy: CharacterSet(charactersIn: ".!?\n"))
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { $0.count > 20 }
+
+            for sentence in sentences.prefix(3) {
+                let words = sentence.split(separator: " ")
+                guard words.count >= 4 else { continue }
+                // Build a "What is X?" style question from the first meaningful chunk
+                let keyPhrase = words.prefix(min(5, words.count / 2)).joined(separator: " ")
+                let q = QuizQuestion(
+                    question: "Explain in your own words: \"\(keyPhrase)…\"",
+                    expectedAnswer: sentence,
+                    noteID: note.id
+                )
+                result.append(q)
+                if result.count >= 5 { return result }
+            }
+        }
+        return result
+    }
+
+    // MARK: - State machine
+
     private func runQuestion(at index: Int) async {
         guard index < questions.count else {
             finishSession()
@@ -67,11 +107,12 @@ final class QuizSessionManager {
 
         // Speak the question
         state = .speaking
-        statusLabel = "Speaking…"
+        statusLabel = q.question   // Always display question text on screen
 
         let intro = index == 0 ? "Let's review. " : ""
         let questionText = "\(intro)Question \(index + 1). \(q.question)"
 
+        var ttsFailed = false
         do {
             // Observe TTS amplitude
             Task {
@@ -83,7 +124,17 @@ final class QuizSessionManager {
             }
             try await tts.speak(questionText)
         } catch {
-            // Continue even if TTS fails
+            // Issue B: TTS failure — show question text (already set in statusLabel) and
+            // wait a short delay before transitioning to listening so user can read it.
+            ttsFailed = true
+        }
+
+        // Issue D: AVAudioSession conflict — add delay after TTS before starting mic
+        if !ttsFailed {
+            try? await Task.sleep(for: .milliseconds(300))
+        } else {
+            // Longer pause when TTS failed so user has time to read the question
+            try? await Task.sleep(for: .milliseconds(1500))
         }
 
         // Listen for answer
@@ -106,6 +157,7 @@ final class QuizSessionManager {
                 self.micAmplitude = 0
             }
         } catch {
+            // Can't listen — skip this question and move on
             await runQuestion(at: index + 1)
         }
     }
@@ -117,6 +169,7 @@ final class QuizSessionManager {
 
         question.userAnswer = transcript
 
+        // Issue C: Gemini evaluation failure — default to incorrect and keep going
         let result: EvaluationResult
         do {
             result = try await GeminiService.evaluateAnswer(
@@ -133,15 +186,19 @@ final class QuizSessionManager {
 
         // Speak feedback
         state = .speaking
-        statusLabel = "Speaking…"
-        let feedback = result.correct
+        let feedbackText = result.correct
             ? "Correct! \(result.feedback)"
             : "Not quite. \(result.feedback)"
+        statusLabel = feedbackText  // Show feedback text on screen regardless of TTS
 
         do {
-            try await tts.speak(feedback)
+            try await tts.speak(feedbackText)
         } catch {}
 
+        // Issue D: small delay after TTS before next question
+        try? await Task.sleep(for: .milliseconds(300))
+
+        // Issue E: properly increment and detect end
         await runQuestion(at: index + 1)
     }
 
