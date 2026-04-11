@@ -75,7 +75,7 @@
 		A2E80114F01312758C170ED8 /* VoiceQuizView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceQuizView.swift; sourceTree = "<group>"; };
 		A586598160DFEF2EDA7DFAE8 /* QuizSessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuizSessionManager.swift; sourceTree = "<group>"; };
 		AD334D70BFB5AE9AB9B1A35B /* NoteCaptureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteCaptureView.swift; sourceTree = "<group>"; };
-		B3241F8F43F06AA5BE01A0F2 /* BetweenClasses.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = BetweenClasses.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B3241F8F43F06AA5BE01A0F2 /* BetweenClasses.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BetweenClasses.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B3C948EDE201E6A07225D683 /* CanvasService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CanvasService.swift; sourceTree = "<group>"; };
 		C77C3CA1F9C5DF56599CC3E2 /* OCRConfirmView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OCRConfirmView.swift; sourceTree = "<group>"; };
 		CF6DEC1D06E80709D07985BE /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
@@ -270,11 +270,6 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1500;
-				TargetAttributes = {
-					37A9B81D7868BD9B1D3D7DD6 = {
-						DevelopmentTeam = "";
-					};
-				};
 			};
 			buildConfigurationList = E2BD0E8F61CF1459C4D87353 /* Build configuration list for PBXProject "BetweenClasses" */;
 			developmentRegion = en;
@@ -415,6 +410,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = BetweenClasses/BetweenClasses.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = VTW2TR4T3G;
 				INFOPLIST_FILE = BetweenClasses/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -489,6 +485,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = BetweenClasses/BetweenClasses.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = VTW2TR4T3G;
 				INFOPLIST_FILE = BetweenClasses/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
