@@ -110,6 +110,10 @@ struct iCalService {
         let endHour   = ec.hour   ?? 10
         let endMin    = ec.minute ?? 0
 
+        // Filter A: Duration filter — real college classes are 40–240 min
+        let durationMins = (endHour * 60 + endMin) - (startHour * 60 + startMin)
+        guard durationMins >= 40, durationMins <= 240 else { return [] }
+
         // Expand RRULE BYDAY into multiple ClassTimes (handles "MWF" style schedules)
         if let rule = rrule,
            rule.uppercased().contains("FREQ=WEEKLY"),
@@ -121,6 +125,10 @@ struct iCalService {
                 .compactMap { dayMap[$0.trimmingCharacters(in: .whitespaces)] }
 
             if !weekdays.isEmpty {
+                // Filter B: Weekend filter — skip if ALL days are Sat (7) or Sun (1)
+                let weekendDays: Set<Int> = [1, 7]
+                guard !weekdays.allSatisfy({ weekendDays.contains($0) }) else { return [] }
+
                 return weekdays.map { wd in
                     ClassTime(weekday: wd, startHour: startHour, startMin: startMin,
                               endHour: endHour, endMin: endMin, room: room)
