@@ -1,9 +1,14 @@
-# Claude Code
+# Agent architecture (local AI context — never commit)
 .claude/
+.cursor/
 CLAUDE.md
+AGENTS.md
+GEMINI.md
 MEMORY/
 STATE/
 TEMPLATES/
+.planning/
+CURSOR_HANDOFF.md
 
 # macOS
 .DS_Store
