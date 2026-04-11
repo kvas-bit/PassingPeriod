@@ -49,12 +49,12 @@ struct OCRConfirmView: View {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Extracted Text")
                                 .bcCaption()
-                                .foregroundStyle(.textSecond)
+                                .foregroundStyle(Color.textSecond)
                                 .textCase(.uppercase)
 
                             TextEditor(text: $editedText)
                                 .bcBody()
-                                .foregroundStyle(.textPrimary)
+                                .foregroundStyle(Color.textPrimary)
                                 .scrollContentBackground(.hidden)
                                 .frame(minHeight: 180)
                                 .padding(16)
@@ -65,7 +65,7 @@ struct OCRConfirmView: View {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Save to")
                                 .bcCaption()
-                                .foregroundStyle(.textSecond)
+                                .foregroundStyle(Color.textSecond)
                                 .textCase(.uppercase)
 
                             Menu {
@@ -82,10 +82,10 @@ struct OCRConfirmView: View {
                                 HStack {
                                     Text(selectedSubject?.name ?? "Select subject")
                                         .bcBody()
-                                        .foregroundStyle(selectedSubject == nil ? .textSecond : .textPrimary)
+                                        .foregroundStyle(selectedSubject == nil ? Color.textSecond : Color.textPrimary)
                                     Spacer()
                                     Image(systemName: "chevron.down")
-                                        .foregroundStyle(.textSecond)
+                                        .foregroundStyle(Color.textSecond)
                                         .font(.system(size: 12))
                                 }
                                 .padding(.horizontal, 16)
@@ -126,7 +126,7 @@ struct OCRConfirmView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
-                        .foregroundStyle(.textSecond)
+                        .foregroundStyle(Color.textSecond)
                 }
             }
             .toolbarBackground(Color.bgPrimary, for: .navigationBar)

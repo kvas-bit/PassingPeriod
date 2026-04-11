@@ -34,7 +34,7 @@ struct ScheduleView: View {
                                 isRefreshing ? .linear(duration: 1).repeatForever(autoreverses: false) : .default,
                                 value: isRefreshing
                             )
-                            .foregroundStyle(.textSecond)
+                            .foregroundStyle(Color.textSecond)
                     }
                 }
             }
@@ -58,22 +58,21 @@ struct ScheduleView: View {
         .listStyle(.plain)
         .background(Color.bgPrimary)
         .refreshable { await refresh() }
-        .environment(AppState())
     }
 
     private var emptyState: some View {
         VStack(spacing: 16) {
             Image(systemName: "calendar.badge.exclamationmark")
                 .font(.system(size: 48))
-                .foregroundStyle(.textTertiary)
+                .foregroundStyle(Color.textTertiary)
 
             Text("No schedule yet")
                 .bcHeadline()
-                .foregroundStyle(.textPrimary)
+                .foregroundStyle(Color.textPrimary)
 
             Text("Connect Canvas or add an iCal URL in settings to sync your class schedule.")
                 .bcBody()
-                .foregroundStyle(.textSecond)
+                .foregroundStyle(Color.textSecond)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 40)
         }

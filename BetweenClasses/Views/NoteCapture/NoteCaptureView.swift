@@ -7,6 +7,7 @@ struct NoteCaptureView: View {
     @State private var isProcessing = false
     @State private var showConfirm = false
     @State private var showImagePicker = false
+    @State private var captureRequested = false
 
     var body: some View {
         ZStack {
@@ -14,7 +15,7 @@ struct NoteCaptureView: View {
 
             VStack(spacing: 0) {
                 // Camera preview
-                CameraPreviewView(onCapture: handleCapture)
+                CameraPreviewView(captureRequested: $captureRequested, onCapture: handleCapture)
                     .ignoresSafeArea(edges: .top)
                     .overlay(alignment: .bottom) {
                         captureControls
@@ -53,14 +54,18 @@ struct NoteCaptureView: View {
             Spacer()
 
             // Shutter
-            Circle()
-                .fill(Color.white)
-                .frame(width: 68, height: 68)
-                .overlay(
-                    Circle()
-                        .stroke(Color.white.opacity(0.3), lineWidth: 3)
-                        .frame(width: 80, height: 80)
-                )
+            Button { captureRequested = true } label: {
+                Circle()
+                    .fill(Color.white)
+                    .frame(width: 68, height: 68)
+                    .overlay(
+                        Circle()
+                            .stroke(Color.white.opacity(0.3), lineWidth: 3)
+                            .frame(width: 80, height: 80)
+                    )
+            }
+            .buttonStyle(.plain)
+            .disabled(isProcessing)
 
             Spacer()
 
@@ -83,7 +88,7 @@ struct NoteCaptureView: View {
 
                 Text("Extracting concepts…")
                     .bcBody()
-                    .foregroundStyle(.textSecond)
+                    .foregroundStyle(Color.textSecond)
             }
         }
     }
@@ -157,6 +162,7 @@ struct ImagePickerShim: UIViewControllerRepresentable {
 // MARK: - Camera Preview
 
 struct CameraPreviewView: UIViewRepresentable {
+    @Binding var captureRequested: Bool
     let onCapture: (Data) -> Void
 
     func makeCoordinator() -> Coordinator { Coordinator(onCapture: onCapture) }
@@ -168,7 +174,12 @@ struct CameraPreviewView: UIViewRepresentable {
         return view
     }
 
-    func updateUIView(_ uiView: CameraView, context: Context) {}
+    func updateUIView(_ uiView: CameraView, context: Context) {
+        if captureRequested {
+            uiView.capturePhoto()
+            DispatchQueue.main.async { captureRequested = false }
+        }
+    }
 
     final class Coordinator {
         let onCapture: (Data) -> Void

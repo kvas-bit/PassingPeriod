@@ -34,10 +34,10 @@ private struct WaveformBar: View {
 
     private var height: CGFloat {
         let base: CGFloat = 4
-        let max: CGFloat = 32
+        let maxHeight: CGFloat = 32
         let noise = CGFloat(sin(phase * .pi))
-        let driven = CGFloat(amplitude) * max * (0.6 + 0.4 * noise)
-        return max(base, driven)
+        let driven = CGFloat(amplitude) * maxHeight * (0.6 + 0.4 * noise)
+        return Swift.max(base, driven)
     }
 
     var body: some View {

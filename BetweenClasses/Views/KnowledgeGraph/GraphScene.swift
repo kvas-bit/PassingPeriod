@@ -7,6 +7,7 @@ final class GraphScene: SCNScene {
     var onNodeTapped: ((GraphNode) -> Void)?
 
     func build(from data: GraphData) {
+        rootNode.removeAllActions()
         rootNode.childNodes.forEach { $0.removeFromParentNode() }
         nodeMap.removeAll()
         tooltipData.removeAll()

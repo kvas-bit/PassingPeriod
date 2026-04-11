@@ -43,10 +43,10 @@ struct HomeView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("\(greeting)")
                             .bcDisplay()
-                            .foregroundStyle(.textPrimary)
+                            .foregroundStyle(Color.textPrimary)
                         Text(dateString)
                             .bcBody()
-                            .foregroundStyle(.textSecond)
+                            .foregroundStyle(Color.textSecond)
                     }
                     Spacer()
                     GlassChip(text: formattedDate())
@@ -71,7 +71,7 @@ struct HomeView: View {
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Recent Notes")
                             .bcCaption()
-                            .foregroundStyle(.textSecond)
+                            .foregroundStyle(Color.textSecond)
                             .textCase(.uppercase)
 
                         ScrollView(.horizontal, showsIndicators: false) {
@@ -133,19 +133,19 @@ private struct NextClassCard: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(subject.name)
                             .bcHeadline()
-                            .foregroundStyle(.textPrimary)
+                            .foregroundStyle(Color.textPrimary)
                         Text(timeLabel)
                             .bcBody()
-                            .foregroundStyle(.textSecond)
+                            .foregroundStyle(Color.textSecond)
                         if let ct = subject.nextClassTime, !ct.room.isEmpty {
                             Text(ct.room)
                                 .bcCaption()
-                                .foregroundStyle(.textTertiary)
+                                .foregroundStyle(Color.textTertiary)
                         }
                     }
                     Spacer()
                     Image(systemName: "chevron.right")
-                        .foregroundStyle(.textTertiary)
+                        .foregroundStyle(Color.textTertiary)
                 }
 
                 Button {
@@ -170,10 +170,10 @@ private struct EmptyNextClassCard: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text("No class scheduled")
                     .bcHeadline()
-                    .foregroundStyle(.textPrimary)
+                    .foregroundStyle(Color.textPrimary)
                 Text("Connect Canvas or add your schedule to get started.")
                     .bcBody()
-                    .foregroundStyle(.textSecond)
+                    .foregroundStyle(Color.textSecond)
             }
         }
     }

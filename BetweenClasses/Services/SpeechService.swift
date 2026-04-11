@@ -68,7 +68,7 @@ final class SpeechService: NSObject {
             self?.recognitionRequest?.append(buffer)
             let channelData = buffer.floatChannelData?[0]
             let frameLength = Int(buffer.frameLength)
-            let rms = channelData.map { ptr in
+            let rms: Float = channelData.map { ptr in
                 let sum = (0..<frameLength).reduce(0.0) { $0 + Double(ptr[$1] * ptr[$1]) }
                 return Float(sqrt(sum / Double(frameLength)))
             } ?? 0

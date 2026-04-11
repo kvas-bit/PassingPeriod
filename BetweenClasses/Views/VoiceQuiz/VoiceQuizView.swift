@@ -61,12 +61,12 @@ struct VoiceQuizView: View {
                 HStack {
                     Text(appState.quizSubject?.name.uppercased() ?? "QUIZ")
                         .bcCaption()
-                        .foregroundStyle(.textSecond)
+                        .foregroundStyle(Color.textSecond)
                     Spacer()
-                    if manager.questions_count > 0 {
-                        Text("Q \(manager.currentIndex + 1) of \(manager.questions_count)")
+                    if manager.questions.count > 0 {
+                        Text("Q \(manager.currentIndex + 1) of \(manager.questions.count)")
                             .bcCaption()
-                            .foregroundStyle(.textSecond)
+                            .foregroundStyle(Color.textSecond)
                     }
                 }
                 .padding(.horizontal, 20)
@@ -81,7 +81,7 @@ struct VoiceQuizView: View {
                     if let q = manager.currentQuestion {
                         Text(q.question)
                             .bcHeadline()
-                            .foregroundStyle(.textPrimary)
+                            .foregroundStyle(Color.textPrimary)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 20)
                             .padding(.vertical, 28)
@@ -90,7 +90,7 @@ struct VoiceQuizView: View {
                     } else {
                         Text(manager.state == .idle ? "Preparing quiz…" : "…")
                             .bcHeadline()
-                            .foregroundStyle(.textSecond)
+                            .foregroundStyle(Color.textSecond)
                             .padding(28)
                     }
                 }
@@ -117,7 +117,7 @@ struct VoiceQuizView: View {
             // Status label
             Text(manager.statusLabel)
                 .bcCaption()
-                .foregroundStyle(.textSecond)
+                .foregroundStyle(Color.textSecond)
                 .opacity(manager.statusLabel.isEmpty ? 0 : 1)
                 .animation(.easeInOut(duration: 0.3), value: manager.statusLabel)
 
@@ -129,16 +129,10 @@ struct VoiceQuizView: View {
                 appState.selectedTab = .home
             }
             .bcCaption()
-            .foregroundStyle(.textSecond)
+            .foregroundStyle(Color.textSecond)
             .padding(.bottom, 40)
         }
     }
-}
-
-// MARK: - QuizSessionManager extension for view
-
-extension QuizSessionManager {
-    var questions_count: Int { questions.count }
 }
 
 // MARK: - Score Card
@@ -165,12 +159,12 @@ private struct ScoreCard: View {
 
                     Text("\(score) / \(total)")
                         .bcDisplay()
-                        .foregroundStyle(.textPrimary)
+                        .foregroundStyle(Color.textPrimary)
 
                     Text(percentage >= 0.8 ? "Excellent work!" :
                          percentage >= 0.6 ? "Good session!" : "Keep reviewing!")
                         .bcBody()
-                        .foregroundStyle(.textSecond)
+                        .foregroundStyle(Color.textSecond)
 
                     Button("Done") { onDone() }
                         .font(.system(size: 16, weight: .semibold))
