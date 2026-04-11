@@ -34,7 +34,12 @@ struct VoiceQuizView: View {
         return appState.quizSubject?.name ?? "Quiz"
     }
 
+    private var colorCodingRefreshToken: Bool {
+        appState.colorCodingEnabled
+    }
+
     var body: some View {
+        let _ = colorCodingRefreshToken
         ZStack {
             Color.bgPrimary.ignoresSafeArea()
 

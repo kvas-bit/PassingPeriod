@@ -36,7 +36,12 @@ struct HomeView: View {
         return f.string(from: Date())
     }
 
+    private var colorCodingRefreshToken: Bool {
+        appState.colorCodingEnabled
+    }
+
     var body: some View {
+        let _ = colorCodingRefreshToken
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 28) {
 
@@ -199,6 +204,11 @@ private struct NextClassCard: View {
     let subject: Subject
     @Environment(AppState.self) private var appState
 
+    private var subjectAccent: Color {
+        _ = appState.colorCodingEnabled
+        return subject.displayColor
+    }
+
     var timeLabel: String {
         guard let mins = subject.minutesUntilNext else { return "Soon" }
         if mins < 1   { return "Now" }
@@ -220,7 +230,7 @@ private struct NextClassCard: View {
                     VStack(alignment: .leading, spacing: 4) {
                         HStack(spacing: 8) {
                             Circle()
-                                .fill(subject.displayColor)
+                                .fill(subjectAccent)
                                 .frame(width: 9, height: 9)
                             Text(subject.name)
                                 .bcHeadline()
@@ -250,7 +260,7 @@ private struct NextClassCard: View {
         }
         .overlay(
             RoundedRectangle(cornerRadius: BCRadius.card, style: .continuous)
-                .stroke(subject.displayColor.opacity(0.22), lineWidth: 1)
+                .stroke(subjectAccent.opacity(0.22), lineWidth: 1)
         )
     }
 }

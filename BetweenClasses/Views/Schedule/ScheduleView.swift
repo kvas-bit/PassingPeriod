@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 
 struct ScheduleView: View {
+    @Environment(AppState.self) private var appState
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Subject.name) private var subjects: [Subject]
 
@@ -11,6 +12,7 @@ struct ScheduleView: View {
     @State private var confirmDeleteAll = false
 
     var body: some View {
+        let _ = appState.colorCodingEnabled
         NavigationStack {
             ZStack {
                 Color.bgPrimary.ignoresSafeArea()
