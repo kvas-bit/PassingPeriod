@@ -7,7 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0221AEC52EE334DB64074843 /* BCButtonStyles.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4153C61695A6A7EA41F97BD6 /* BCButtonStyles.swift */; };
 		103ED2AA5021B992F299678B /* GlassCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BD19E1E1922C0D8268B3B9D /* GlassCard.swift */; };
+		2857EB8A3A5DE39EA7AC10D6 /* BCChromeBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = D858124CE10820CD9A64FE73 /* BCChromeBar.swift */; };
 		2D62416973F136016F50FCA5 /* Note.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9E5844B48000CAA4B80FE39 /* Note.swift */; };
 		44395BB45CC4F637FB3C7D96 /* CanvasService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3C948EDE201E6A07225D683 /* CanvasService.swift */; };
 		4F998A4760C731879F6FFAAF /* KnowledgeGraphView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 741DD4D5401554B54A160D87 /* KnowledgeGraphView.swift */; };
@@ -26,11 +28,13 @@
 		AB6099D9DDE0E4E263BC9798 /* Subject.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6EA6DADCE4B1CD530FF3798 /* Subject.swift */; };
 		AC0E938D802F771EAB097201 /* PulseRing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EC87857E9315BCEC1CC9BA8 /* PulseRing.swift */; };
 		AE2C198135470AB3BCB77CB5 /* KeychainService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEC7BB9355CCE1068E7CB528 /* KeychainService.swift */; };
+		B3046EED8BBA754AF556206C /* BCDesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F9BCADF7D7FD442F2C11297 /* BCDesignSystem.swift */; };
 		B69AE319513266475AA848A7 /* NoteCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 871C3C42B43BA985A3AB49A0 /* NoteCardView.swift */; };
 		B821979F6FDAD7659E35602C /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF6DEC1D06E80709D07985BE /* HomeView.swift */; };
 		BD7EE1CED0B656C1F197BFD7 /* GraphScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C2E3CB2ACE7FAD4BE9128F6 /* GraphScene.swift */; };
 		C038E1487FCE5EA58B221541 /* View+Glass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6ED23F3289657E30C1C10214 /* View+Glass.swift */; };
 		C454C9EBDC18A8F27B425218 /* OCRConfirmView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C77C3CA1F9C5DF56599CC3E2 /* OCRConfirmView.swift */; };
+		CB91B91C21C5E52F28E2293E /* RecentNotesSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A265E12A51A0B886DEB791E0 /* RecentNotesSheet.swift */; };
 		CF8C180EC5F5DFF745C2FA77 /* QuizSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 582ACF91E8EB761847D3BEE5 /* QuizSession.swift */; };
 		D4A5078F1A03E7CFF1E02276 /* GraphDataBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFE842F38F7D52ADA3B51AF7 /* GraphDataBuilder.swift */; };
 		DD905EAF069C7BB8E4496BDF /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51DF3FE52A885AFC1867F0CC /* AppState.swift */; };
@@ -49,6 +53,7 @@
 		2BFBEAC948028AB37BC95E85 /* TabBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabBarView.swift; sourceTree = "<group>"; };
 		2EC87857E9315BCEC1CC9BA8 /* PulseRing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PulseRing.swift; sourceTree = "<group>"; };
 		3A68C47D01E9F7F8531FED1D /* GeminiService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiService.swift; sourceTree = "<group>"; };
+		4153C61695A6A7EA41F97BD6 /* BCButtonStyles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BCButtonStyles.swift; sourceTree = "<group>"; };
 		4C2A38BB923C8A546F3B0235 /* ClassRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClassRowView.swift; sourceTree = "<group>"; };
 		4FE37DEFFFCF2AA0F82723BD /* BetweenClassesApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BetweenClassesApp.swift; sourceTree = "<group>"; };
 		51DF3FE52A885AFC1867F0CC /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
@@ -56,6 +61,7 @@
 		56FC1FB7B28E2D368BD544C8 /* SpeechService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechService.swift; sourceTree = "<group>"; };
 		582ACF91E8EB761847D3BEE5 /* QuizSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuizSession.swift; sourceTree = "<group>"; };
 		5F70ABAB443B42BA38AC8777 /* CanvasConnectView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CanvasConnectView.swift; sourceTree = "<group>"; };
+		5F9BCADF7D7FD442F2C11297 /* BCDesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BCDesignSystem.swift; sourceTree = "<group>"; };
 		607A961A436D642ED99E45F5 /* VisionOCRService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisionOCRService.swift; sourceTree = "<group>"; };
 		6952A5AFCDC494F25C939EE5 /* ClassTime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClassTime.swift; sourceTree = "<group>"; };
 		6ED23F3289657E30C1C10214 /* View+Glass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "View+Glass.swift"; sourceTree = "<group>"; };
@@ -65,6 +71,7 @@
 		7BD19E1E1922C0D8268B3B9D /* GlassCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassCard.swift; sourceTree = "<group>"; };
 		7C2E3CB2ACE7FAD4BE9128F6 /* GraphScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphScene.swift; sourceTree = "<group>"; };
 		871C3C42B43BA985A3AB49A0 /* NoteCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteCardView.swift; sourceTree = "<group>"; };
+		A265E12A51A0B886DEB791E0 /* RecentNotesSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecentNotesSheet.swift; sourceTree = "<group>"; };
 		A2E80114F01312758C170ED8 /* VoiceQuizView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceQuizView.swift; sourceTree = "<group>"; };
 		A586598160DFEF2EDA7DFAE8 /* QuizSessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuizSessionManager.swift; sourceTree = "<group>"; };
 		AD334D70BFB5AE9AB9B1A35B /* NoteCaptureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteCaptureView.swift; sourceTree = "<group>"; };
@@ -74,6 +81,7 @@
 		CF6DEC1D06E80709D07985BE /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		D6C94F976AB66319D0DCBA38 /* iCalService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iCalService.swift; sourceTree = "<group>"; };
 		D6EA6DADCE4B1CD530FF3798 /* Subject.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Subject.swift; sourceTree = "<group>"; };
+		D858124CE10820CD9A64FE73 /* BCChromeBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BCChromeBar.swift; sourceTree = "<group>"; };
 		DEC7BB9355CCE1068E7CB528 /* KeychainService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainService.swift; sourceTree = "<group>"; };
 		E1D07CE5C4B6C787D8647EEF /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		E684AB6D6A7C209C9A2FB41B /* Color+Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+Theme.swift"; sourceTree = "<group>"; };
@@ -87,6 +95,7 @@
 		29CFED2B097ED473DC454CAE /* Extensions */ = {
 			isa = PBXGroup;
 			children = (
+				5F9BCADF7D7FD442F2C11297 /* BCDesignSystem.swift */,
 				E684AB6D6A7C209C9A2FB41B /* Color+Theme.swift */,
 				6ED23F3289657E30C1C10214 /* View+Glass.swift */,
 			);
@@ -136,6 +145,7 @@
 			isa = PBXGroup;
 			children = (
 				CF6DEC1D06E80709D07985BE /* HomeView.swift */,
+				A265E12A51A0B886DEB791E0 /* RecentNotesSheet.swift */,
 				6F951C36E120216BDB8CF035 /* SubjectCardView.swift */,
 			);
 			path = Home;
@@ -180,6 +190,8 @@
 		F02462C7270D4E1B84AACCFB /* Components */ = {
 			isa = PBXGroup;
 			children = (
+				4153C61695A6A7EA41F97BD6 /* BCButtonStyles.swift */,
+				D858124CE10820CD9A64FE73 /* BCChromeBar.swift */,
 				7BD19E1E1922C0D8268B3B9D /* GlassCard.swift */,
 				2EC87857E9315BCEC1CC9BA8 /* PulseRing.swift */,
 				2BFBEAC948028AB37BC95E85 /* TabBarView.swift */,
@@ -284,6 +296,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				DD905EAF069C7BB8E4496BDF /* AppState.swift in Sources */,
+				0221AEC52EE334DB64074843 /* BCButtonStyles.swift in Sources */,
+				2857EB8A3A5DE39EA7AC10D6 /* BCChromeBar.swift in Sources */,
+				B3046EED8BBA754AF556206C /* BCDesignSystem.swift in Sources */,
 				584827BFA38CDC99C40E9EE4 /* BetweenClassesApp.swift in Sources */,
 				99F93878373500438EC353C1 /* CanvasConnectView.swift in Sources */,
 				44395BB45CC4F637FB3C7D96 /* CanvasService.swift in Sources */,
@@ -308,6 +323,7 @@
 				EEA6BDE76159314E7BBA17A3 /* QuizQuestion.swift in Sources */,
 				CF8C180EC5F5DFF745C2FA77 /* QuizSession.swift in Sources */,
 				A526B9B7975E01A63CE5E0C2 /* QuizSessionManager.swift in Sources */,
+				CB91B91C21C5E52F28E2293E /* RecentNotesSheet.swift in Sources */,
 				FF98631ACE88C07EDB343CB1 /* ScheduleView.swift in Sources */,
 				A221FDED6E3DFBB74676326D /* SpeechService.swift in Sources */,
 				AB6099D9DDE0E4E263BC9798 /* Subject.swift in Sources */,

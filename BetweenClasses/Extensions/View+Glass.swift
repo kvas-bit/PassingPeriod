@@ -6,42 +6,48 @@ struct GlassCardModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .background {
-                RoundedRectangle(cornerRadius: cornerRadius)
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .fill(.ultraThinMaterial)
+                    .background {
+                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                            .fill(Color.bgSurface.opacity(0.55))
+                    }
                     .overlay {
-                        // Inner gradient for depth — top-left lighter, bottom-right darker
-                        RoundedRectangle(cornerRadius: cornerRadius)
+                        // Specular rim — subtle so body text stays legible
+                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                             .fill(
                                 LinearGradient(
                                     colors: [
-                                        Color.white.opacity(0.07),
-                                        Color.white.opacity(0.01)
+                                        Color.white.opacity(0.055),
+                                        Color.white.opacity(0.012)
                                     ],
                                     startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
+                                    endPoint: .bottom
                                 )
                             )
                     }
             }
             .overlay {
-                RoundedRectangle(cornerRadius: cornerRadius)
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .strokeBorder(
                         LinearGradient(
                             colors: [
-                                Color.white.opacity(0.18),
-                                Color.white.opacity(0.04)
+                                Color.white.opacity(0.22),
+                                Color.white.opacity(0.05)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         ),
-                        lineWidth: 0.75
+                        lineWidth: 1
                     )
             }
+            .shadow(color: Color.black.opacity(0.45), radius: 20, x: 0, y: 10)
+            .shadow(color: Color.white.opacity(0.04), radius: 1, x: 0, y: -0.5)
     }
 }
 
 extension View {
-    func glassCard(cornerRadius: CGFloat = 20) -> some View {
+    func glassCard(cornerRadius: CGFloat = BCRadius.panel) -> some View {
         modifier(GlassCardModifier(cornerRadius: cornerRadius))
     }
 }
