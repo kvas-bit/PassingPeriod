@@ -1,6 +1,5 @@
 import Foundation
 import SceneKit
-import SwiftUI
 
 struct GraphNode {
     let id: UUID
