@@ -4,10 +4,12 @@ import AVFoundation
 struct NoteCaptureView: View {
     @State private var capturedImage: Data?
     @State private var extractedText: String = ""
+    @State private var ocrDraft: OCRDraft?
     @State private var isProcessing = false
     @State private var showConfirm = false
     @State private var showImagePicker = false
     @State private var captureRequested = false
+    @State private var captureSequence = 0
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -28,14 +30,20 @@ struct NoteCaptureView: View {
                 OCRConfirmView(
                     imageData: data,
                     extractedText: extractedText,
+                    ocrSourceSummary: ocrDraft?.sourceLabel,
+                    ocrConfidenceSummary: ocrDraft?.confidenceSummary,
+                    suggestedTopicName: ocrDraft?.suggestedTopic,
+                    unreadableRegions: ocrDraft?.unreadableRegions ?? [],
                     onSave: { _ in
                         capturedImage = nil
                         extractedText = ""
+                        ocrDraft = nil
                     },
                     onCaptureAnother: {
                         // Dismiss sheet (showConfirm goes false) then camera is live again
                         capturedImage = nil
                         extractedText = ""
+                        ocrDraft = nil
                         showConfirm = false
                     }
                 )
@@ -56,6 +64,7 @@ struct NoteCaptureView: View {
                     .glassCard(cornerRadius: BCRadius.control)
             }
             .buttonStyle(.plain)
+            .disabled(isProcessing)
             .accessibilityLabel("Choose from library")
 
             Spacer()
@@ -94,7 +103,7 @@ struct NoteCaptureView: View {
                     .tint(.white)
                     .scaleEffect(1.4)
 
-                Text("Extracting concepts…")
+                Text("Reading your notes…")
                     .bcBody()
                     .foregroundStyle(Color.textSecond)
             }
@@ -102,18 +111,29 @@ struct NoteCaptureView: View {
     }
 
     private func handleCapture(_ imageData: Data) {
+        captureSequence += 1
+        let currentCaptureID = captureSequence
         capturedImage = imageData
         isProcessing = true
 
         Task {
             do {
-                extractedText = try await VisionOCRService.extractText(from: imageData)
+                let draft = try await VisionOCRService.extractDraft(from: imageData)
+                await MainActor.run {
+                    guard currentCaptureID == captureSequence else { return }
+                    extractedText = draft.text
+                    ocrDraft = draft
+                    isProcessing = false
+                    showConfirm = true
+                }
             } catch {
-                extractedText = ""
-            }
-            await MainActor.run {
-                isProcessing = false
-                showConfirm = true
+                await MainActor.run {
+                    guard currentCaptureID == captureSequence else { return }
+                    extractedText = ""
+                    ocrDraft = nil
+                    isProcessing = false
+                    showConfirm = true
+                }
             }
         }
     }
