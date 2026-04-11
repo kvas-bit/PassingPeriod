@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Morphing Gem — Concept B Refined</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #08090a;
+    color: #fff;
+    font-family: -apple-system, 'Inter', sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    min-height: 100vh;
+    padding: 32px 24px 60px;
+  }
+
+  h2 { font-size: 20px; font-weight: 700; letter-spacing: -0.4px; margin-bottom: 6px; text-align: center; }
+  .subtitle { color: rgba(255,255,255,0.4); font-size: 13px; margin-bottom: 28px; text-align: center; line-height: 1.5; }
+
+  /* Phone shell */
+  .phone {
+    width: 270px;
+    height: 540px;
+    background: #08090a;
+    border-radius: 42px;
+    border: 1px solid rgba(255,255,255,0.1);
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,0.04),
+      inset 0 1px 0 rgba(255,255,255,0.14),
+      0 60px 120px rgba(0,0,0,0.85);
+    overflow: hidden;
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  /* Iridescent background mesh — shifts with state */
+  .bg-mesh {
+    position: absolute; inset: 0;
+    transition: opacity 1.5s ease;
+  }
+  .bg-mesh-a {
+    background:
+      radial-gradient(ellipse 80% 50% at 50% 15%, rgba(200,215,255,0.06) 0%, transparent 65%),
+      radial-gradient(ellipse 50% 40% at 85% 85%, rgba(255,240,255,0.04) 0%, transparent 55%),
+      radial-gradient(ellipse 40% 30% at 15% 65%, rgba(210,255,240,0.03) 0%, transparent 50%);
+    animation: mesh-drift 10s ease-in-out infinite alternate;
+  }
+  @keyframes mesh-drift {
+    0%   { opacity: 0.6; transform: scale(1); }
+    100% { opacity: 1; transform: scale(1.04); }
+  }
+
+  /* Top chrome */
+  .top-bar {
+    position: absolute; top: 0; left: 0; right: 0;
+    padding: 18px 20px 14px;
+    display: flex; justify-content: space-between; align-items: center;
+    z-index: 10;
+    border-bottom: 1px solid rgba(255,255,255,0);
+  }
+  .subject-label {
+    font-size: 9px; letter-spacing: 2px;
+    color: rgba(255,255,255,0.28); font-weight: 500;
+  }
+  .q-badge {
+    font-size: 9px; color: rgba(255,255,255,0.2);
+    border: 1px solid rgba(255,255,255,0.1);
+    padding: 2px 8px; border-radius: 100px;
+    letter-spacing: 0.5px;
+  }
+
+  /* Iridescent divider line */
+  .irid-line {
+    position: absolute; top: 52px; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg,
+      transparent 0%,
+      rgba(200,215,255,0.25) 20%,
+      rgba(255,240,255,0.2) 50%,
+      rgba(210,255,240,0.25) 80%,
+      transparent 100%
+    );
+    z-index: 10;
+    animation: irid-shift 6s linear infinite;
+    background-size: 200% 100%;
+  }
+  @keyframes irid-shift {
+    0%   { background-position: 0% 0%; }
+    100% { background-position: 200% 0%; }
+  }
+
+  /* Center content */
+  .center {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 0;
+    padding: 60px 20px 80px;
+    z-index: 5;
+  }
+
+  .question-text {
+    font-size: 13.5px; font-weight: 500;
+    color: rgba(255,255,255,0.88);
+    text-align: center; line-height: 1.55;
+    margin-bottom: 32px;
+    min-height: 54px;
+    transition: opacity 0.4s ease;
+  }
+
+  /* Gem wrapper */
+  .gem-wrap {
+    position: relative;
+    width: 110px; height: 110px;
+    margin-bottom: 28px;
+    flex-shrink: 0;
+  }
+
+  /* Iridescent ambient glow behind gem */
+  .gem-glow {
+    position: absolute;
+    inset: -24px;
+    border-radius: 50%;
+    background: conic-gradient(from 0deg at 50% 50%,
+      rgba(200,215,255,0.15) 0%,
+      rgba(255,240,255,0.10) 90deg,
+      rgba(210,255,240,0.12) 180deg,
+      rgba(255,250,215,0.08) 270deg,
+      rgba(200,215,255,0.15) 360deg
+    );
+    filter: blur(18px);
+    animation: glow-spin 12s linear infinite;
+    transition: opacity 0.8s ease;
+  }
+  @keyframes glow-spin { to { transform: rotate(360deg); } }
+
+  /* Second, smaller inner glow */
+  .gem-glow-inner {
+    position: absolute;
+    inset: -8px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,255,255,0.12) 0%, transparent 70%);
+    filter: blur(8px);
+    transition: opacity 0.6s ease;
+  }
+
+  #gem-svg {
+    width: 110px; height: 110px;
+    overflow: visible;
+  }
+
+  /* Waveform */
+  .waveform {
+    display: flex; align-items: center; gap: 2.5px;
+    height: 32px;
+    margin-bottom: 10px;
+  }
+  .waveform .bar {
+    width: 2.5px; border-radius: 100px;
+    background: linear-gradient(180deg,
+      rgba(200,215,255,0.8) 0%,
+      rgba(210,255,240,0.5) 100%
+    );
+    transform-origin: center;
+    transition: transform 0.08s ease, opacity 0.08s ease;
+  }
+
+  /* State label */
+  .state-chip {
+    font-size: 8.5px; letter-spacing: 2.5px;
+    color: rgba(255,255,255,0.22);
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-top-color: rgba(255,255,255,0.16);
+    padding: 5px 13px; border-radius: 100px;
+    transition: color 0.4s ease;
+  }
+
+  /* Bottom chrome */
+  .bottom-bar {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    padding: 10px 20px 22px;
+    display: flex; justify-content: center;
+    z-index: 10;
+  }
+  .end-btn {
+    font-size: 10px; color: rgba(255,255,255,0.15);
+    letter-spacing: 0.5px;
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 100px; padding: 5px 18px;
+  }
+  .irid-line-bottom {
+    position: absolute; bottom: 48px; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg,
+      transparent 0%,
+      rgba(210,255,240,0.15) 25%,
+      rgba(200,215,255,0.2) 50%,
+      rgba(255,240,255,0.15) 75%,
+      transparent 100%
+    );
+    z-index: 10;
+  }
+
+  /* State buttons below phone */
+  .state-controls {
+    margin-top: 28px;
+    display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;
+  }
+  .state-btn {
+    font-size: 11px; font-weight: 500;
+    color: rgba(255,255,255,0.4);
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 100px; padding: 8px 16px;
+    cursor: pointer; transition: all 0.2s ease;
+  }
+  .state-btn:hover { background: rgba(255,255,255,0.09); color: rgba(255,255,255,0.7); }
+  .state-btn.active {
+    background: rgba(255,255,255,0.1);
+    border-color: rgba(255,255,255,0.35);
+    color: #fff;
+  }
+  .controls-label {
+    font-size: 11px; color: rgba(255,255,255,0.25);
+    text-align: center; margin-top: 12px; letter-spacing: 0.3px;
+  }
+</style>
+</head>
+<body>
+
+<h2>Concept B — Morphing Gem</h2>
+<p class="subtitle">The crystal changes form as the conversation shifts state.<br>Tap the state buttons below to see it live.</p>
+
+<div class="phone">
+  <div class="bg-mesh bg-mesh-a"></div>
+
+  <div class="top-bar">
+    <div class="subject-label">PHYSICS 101</div>
+    <div class="q-badge">Q 2 / 5</div>
+  </div>
+  <div class="irid-line"></div>
+
+  <div class="center">
+    <div class="question-text" id="q-text">
+      What are Newton's three laws of motion?
+    </div>
+
+    <div class="gem-wrap">
+      <div class="gem-glow"></div>
+      <div class="gem-glow-inner"></div>
+      <svg id="gem-svg" viewBox="0 0 110 110" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- faces drawn by JS -->
+        <g id="gem-faces"></g>
+        <!-- edges drawn by JS -->
+        <g id="gem-edges"></g>
+        <!-- specular highlights -->
+        <g id="gem-specs"></g>
+      </svg>
+    </div>
+
+    <div class="waveform" id="waveform">
+      <div class="bar" style="height:5px"></div>
+      <div class="bar" style="height:10px"></div>
+      <div class="bar" style="height:18px"></div>
+      <div class="bar" style="height:26px"></div>
+      <div class="bar" style="height:30px"></div>
+      <div class="bar" style="height:24px"></div>
+      <div class="bar" style="height:20px"></div>
+      <div class="bar" style="height:14px"></div>
+      <div class="bar" style="height:8px"></div>
+      <div class="bar" style="height:18px"></div>
+      <div class="bar" style="height:28px"></div>
+      <div class="bar" style="height:22px"></div>
+      <div class="bar" style="height:12px"></div>
+    </div>
+
+    <div class="state-chip" id="state-chip">LISTENING</div>
+  </div>
+
+  <div class="irid-line-bottom"></div>
+  <div class="bottom-bar">
+    <div class="end-btn">End session</div>
+  </div>
+</div>
+
+<div class="state-controls">
+  <button class="state-btn active" onclick="setState('listening')">Listening</button>
+  <button class="state-btn" onclick="setState('speaking')">AI Speaking</button>
+  <button class="state-btn" onclick="setState('evaluating')">Evaluating</button>
+  <button class="state-btn" onclick="setState('correct')">Correct!</button>
+</div>
+<div class="controls-label">← tap to simulate conversation states</div>
+
+<script>
+const CX = 55, CY = 55, R = 46;
+
+// All shapes use 12 outer vertices for smooth morphing
+// Each vertex: [x, y] relative to 110x110 viewbox, center at 55,55
+function polarPts(angles, radii) {
+  return angles.map((a, i) => {
+    const rad = (a - 90) * Math.PI / 180;
+    const r = Array.isArray(radii) ? radii[i] : radii;
+    return [CX + Math.cos(rad) * r, CY + Math.sin(rad) * r];
+  });
+}
+
+const N = 12;
+const angles = Array.from({length: N}, (_, i) => i * (360/N));
+
+// Shape definitions (outer radii per vertex)
+const SHAPES = {
+  gem: polarPts(angles, [
+    42, 38, 48, 38, 42, 34, // top half - pointy top
+    34, 38, 48, 38, 42, 38  // lower half
+  ]),
+  sphere: polarPts(angles, 44),
+  diamond: polarPts(angles, [
+    46, 32, 22, 32, 46, 36,
+    46, 36, 22, 36, 46, 32
+  ]),
+  cube: polarPts(angles, [
+    40, 44, 40, 44, 40, 44,
+    40, 44, 40, 44, 40, 44
+  ]),
+};
+
+// Better gem shape - proper cut gem with pointed top
+const GEM_RADII_FINE = [
+  46, // top - tallest
+  28, 34,
+  44, // widest equator
+  34, 28,
+  38, // bottom not as pointed
+  28, 34,
+  44,
+  34, 28
+];
+SHAPES.gem = polarPts(angles, GEM_RADII_FINE);
+
+// Diamond - very pointy top and bottom
+const DIAMOND_RADII = [
+  48, 22, 18, 22, 48, 26,
+  22, 26, 48, 22, 18, 22
+];
+SHAPES.diamond = polarPts(angles, DIAMOND_RADII);
+
+// Burst/correct - star-like
+const BURST_RADII = [
+  46, 24, 44, 24, 46, 24,
+  44, 24, 46, 24, 44, 24
+];
+SHAPES.correct = polarPts(angles, BURST_RADII);
+
+// Face color sets per state (iridescent but subtle)
+const FACE_COLORS = {
+  listening: [
+    'rgba(200,215,255,0.08)', 'rgba(255,240,255,0.06)',
+    'rgba(210,255,240,0.09)', 'rgba(255,250,215,0.05)',
+    'rgba(200,215,255,0.07)', 'rgba(255,240,255,0.08)',
+  ],
+  speaking: [
+    'rgba(240,240,255,0.10)', 'rgba(215,235,255,0.08)',
+    'rgba(200,215,255,0.12)', 'rgba(215,255,240,0.08)',
+    'rgba(240,240,255,0.10)', 'rgba(200,215,255,0.09)',
+  ],
+  evaluating: [
+    'rgba(255,245,220,0.07)', 'rgba(240,220,255,0.08)',
+    'rgba(220,240,255,0.10)', 'rgba(255,240,240,0.06)',
+    'rgba(240,255,240,0.09)', 'rgba(255,245,220,0.07)',
+  ],
+  correct: [
+    'rgba(240,255,240,0.12)', 'rgba(215,255,230,0.09)',
+    'rgba(240,255,255,0.11)', 'rgba(215,255,215,0.08)',
+    'rgba(240,255,240,0.12)', 'rgba(220,255,230,0.10)',
+  ],
+};
+
+const EDGE_OPACITY = {
+  listening: 0.18,
+  speaking: 0.22,
+  evaluating: 0.20,
+  correct: 0.28,
+};
+
+const GLOW_SCALE = {
+  listening: 1.0,
+  speaking: 1.15,
+  evaluating: 0.9,
+  correct: 1.3,
+};
+
+const STATE_LABELS = {
+  listening: 'LISTENING',
+  speaking: 'AI SPEAKING',
+  evaluating: 'EVALUATING',
+  correct: 'CORRECT',
+};
+
+const Q_TEXTS = {
+  listening: 'What are Newton\'s three laws of motion?',
+  speaking: 'Great start — the first law is inertia. Can you describe the second?',
+  evaluating: 'Evaluating your answer…',
+  correct: 'Excellent! 3/3 correct.',
+};
+
+// Animation state
+let currentPts = SHAPES.gem.map(p => [...p]);
+let targetPts = SHAPES.gem.map(p => [...p]);
+let morphT = 1.0;
+let morphDuration = 700; // ms
+let morphStart = 0;
+let currentState = 'listening';
+
+function lerp(a, b, t) { return a + (b - a) * t; }
+function easeInOut(t) { return t < 0.5 ? 2*t*t : -1+(4-2*t)*t; }
+
+function startMorph(shape) {
+  targetPts = SHAPES[shape].map(p => [...p]);
+  morphStart = performance.now();
+  morphT = 0;
+}
+
+function tick(now) {
+  if (morphT < 1) {
+    const elapsed = now - morphStart;
+    morphT = Math.min(elapsed / morphDuration, 1);
+    const t = easeInOut(morphT);
+    currentPts = currentPts.map((p, i) => [
+      lerp(p[0], targetPts[i][0], t),
+      lerp(p[1], targetPts[i][1], t),
+    ]);
+    if (morphT >= 1) currentPts = targetPts.map(p => [...p]);
+    renderGem();
+  }
+
+  // Animate waveform
+  animateWave(now);
+  requestAnimationFrame(tick);
+}
+
+function renderGem() {
+  const colors = FACE_COLORS[currentState];
+  const edgeOp = EDGE_OPACITY[currentState];
+  const pts = currentPts;
+  const n = pts.length;
+
+  // Build faces: triangles from center to each consecutive pair
+  let facesHTML = '';
+  for (let i = 0; i < n; i++) {
+    const a = pts[i];
+    const b = pts[(i+1) % n];
+    const colorIdx = Math.floor(i / 2) % colors.length;
+    const d = `M ${CX},${CY} L ${a[0]},${a[1]} L ${b[0]},${b[1]} Z`;
+    facesHTML += `<path d="${d}" fill="${colors[colorIdx]}"/>`;
+  }
+
+  // Edges: outer polygon + spokes from center to top vertices
+  let edgesHTML = '';
+  // Outer polygon
+  const outerD = pts.map((p, i) => `${i===0?'M':'L'} ${p[0]},${p[1]}`).join(' ') + ' Z';
+  edgesHTML += `<path d="${outerD}" fill="none" stroke="rgba(255,255,255,${edgeOp})" stroke-width="0.7"/>`;
+
+  // Internal spokes to every other vertex (gives facet feel)
+  for (let i = 0; i < n; i += 2) {
+    const p = pts[i];
+    const dist = Math.sqrt((p[0]-CX)**2 + (p[1]-CY)**2);
+    const op = (edgeOp * dist / 46).toFixed(3);
+    edgesHTML += `<line x1="${CX}" y1="${CY}" x2="${p[0]}" y2="${p[1]}" stroke="rgba(255,255,255,${op})" stroke-width="0.5"/>`;
+  }
+
+  // Equator lines (connecting every 3rd vertex across)
+  for (let i = 0; i < 3; i++) {
+    const a = pts[i * 4];
+    const b = pts[(i * 4 + 6) % n];
+    edgesHTML += `<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" stroke="rgba(255,255,255,${(edgeOp*0.5).toFixed(3)})" stroke-width="0.35"/>`;
+  }
+
+  // Specular: bright dot at topmost point
+  let topPt = pts[0];
+  for (const p of pts) { if (p[1] < topPt[1]) topPt = p; }
+  const specsHTML = `
+    <circle cx="${topPt[0]}" cy="${topPt[1]}" r="2.8" fill="rgba(255,255,255,0.92)"/>
+    <circle cx="${topPt[0]}" cy="${topPt[1]}" r="5" fill="rgba(255,255,255,0.18)" filter="url(#blur2)"/>
+  `;
+
+  document.getElementById('gem-faces').innerHTML = facesHTML;
+  document.getElementById('gem-edges').innerHTML = edgesHTML;
+  document.getElementById('gem-specs').innerHTML = specsHTML;
+
+  // Add filter def if not present
+  const svg = document.getElementById('gem-svg');
+  if (!svg.querySelector('defs')) {
+    svg.insertAdjacentHTML('afterbegin', `<defs>
+      <filter id="blur2"><feGaussianBlur stdDeviation="2"/></filter>
+    </defs>`);
+  }
+}
+
+// Waveform animation
+const wvBars = document.querySelectorAll('.waveform .bar');
+const baseHeights = [5, 10, 18, 26, 30, 24, 20, 14, 8, 18, 28, 22, 12];
+let waveActive = true;
+
+function animateWave(now) {
+  if (!waveActive) {
+    wvBars.forEach(b => b.style.transform = 'scaleY(0.2)');
+    return;
+  }
+  wvBars.forEach((bar, i) => {
+    const phase = (now / 800 + i * 0.38) % (Math.PI * 2);
+    const scale = 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(phase));
+    bar.style.transform = `scaleY(${scale.toFixed(3)})`;
+    bar.style.opacity = (0.4 + 0.6 * scale).toFixed(3);
+  });
+}
+
+// Auto-morph cycle
+let autoMorphIdx = 0;
+const morphCycle = ['gem', 'sphere', 'diamond', 'gem', 'cube', 'gem'];
+let autoMorphTimer;
+
+function scheduleNextMorph() {
+  const delay = 2200 + Math.random() * 800;
+  autoMorphTimer = setTimeout(() => {
+    autoMorphIdx = (autoMorphIdx + 1) % morphCycle.length;
+    startMorph(morphCycle[autoMorphIdx]);
+    scheduleNextMorph();
+  }, delay);
+}
+
+function setState(state) {
+  if (state === currentState) return;
+  currentState = state;
+
+  // Update buttons
+  document.querySelectorAll('.state-btn').forEach(b => {
+    b.classList.toggle('active', b.textContent.toLowerCase().startsWith(state.split('_')[0]));
+  });
+
+  // Update UI text
+  document.getElementById('state-chip').textContent = STATE_LABELS[state];
+  document.getElementById('q-text').textContent = Q_TEXTS[state];
+
+  // Update waveform visibility
+  waveActive = (state === 'listening' || state === 'speaking');
+
+  // Trigger morph
+  clearTimeout(autoMorphTimer);
+  const shapeMap = {
+    listening: 'gem',
+    speaking: 'diamond',
+    evaluating: 'cube',
+    correct: 'correct',
+  };
+  autoMorphIdx = 0;
+  morphDuration = state === 'correct' ? 400 : 700;
+  startMorph(shapeMap[state]);
+
+  // Resume auto-morph for listening/speaking
+  if (state === 'listening' || state === 'speaking') {
+    setTimeout(scheduleNextMorph, 2000);
+  }
+}
+
+// Init
+renderGem();
+requestAnimationFrame(tick);
+scheduleNextMorph();
+</script>
+</body>
+</html>

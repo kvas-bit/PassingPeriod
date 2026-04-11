@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>3D Morphing Crystal</title>
+<script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #08090a;
+    color: #fff;
+    font-family: -apple-system, 'Inter', sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 28px 24px 64px;
+    min-height: 100vh;
+  }
+  h2 { font-size: 20px; font-weight: 700; letter-spacing: -0.4px; margin-bottom: 5px; }
+  .subtitle { color: rgba(255,255,255,0.38); font-size: 13px; margin-bottom: 24px; text-align: center; line-height: 1.5; }
+
+  .phone {
+    width: 268px;
+    height: 548px;
+    background: #08090a;
+    border-radius: 44px;
+    border: 1px solid rgba(255,255,255,0.1);
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,0.04),
+      inset 0 1px 0 rgba(255,255,255,0.14),
+      0 60px 120px rgba(0,0,0,0.9);
+    overflow: hidden;
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  /* Iridescent background - subtle mesh */
+  .bg {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse 75% 55% at 50% 18%, rgba(180,200,255,0.07) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 40% at 80% 80%, rgba(220,180,255,0.04) 0%, transparent 55%),
+      radial-gradient(ellipse 40% 35% at 15% 60%, rgba(180,255,220,0.04) 0%, transparent 50%);
+    animation: bg-breathe 8s ease-in-out infinite alternate;
+  }
+  @keyframes bg-breathe {
+    0%   { opacity: 0.7; }
+    100% { opacity: 1.1; }
+  }
+
+  .top-bar {
+    position: absolute; top: 0; left: 0; right: 0;
+    padding: 17px 20px 13px;
+    display: flex; justify-content: space-between; align-items: center;
+    z-index: 20;
+  }
+  .subject-lbl { font-size: 9px; letter-spacing: 2px; color: rgba(255,255,255,0.25); font-weight: 500; }
+  .q-badge {
+    font-size: 9px; color: rgba(255,255,255,0.18);
+    border: 1px solid rgba(255,255,255,0.09);
+    padding: 2px 8px; border-radius: 100px; letter-spacing: 0.5px;
+  }
+
+  /* iridescent divider */
+  .irid-top {
+    position: absolute; top: 50px; left: 0; right: 0; height: 1px; z-index: 20;
+    background: linear-gradient(90deg,
+      transparent 0%,
+      rgba(180,200,255,0.3) 20%,
+      rgba(220,180,255,0.22) 50%,
+      rgba(180,255,220,0.3) 80%,
+      transparent 100%
+    );
+    animation: irid-flow 5s linear infinite;
+    background-size: 200% 100%;
+  }
+  @keyframes irid-flow {
+    0%   { background-position: 0% 0%; }
+    100% { background-position: 200% 0%; }
+  }
+
+  .q-text {
+    position: absolute; top: 64px; left: 0; right: 0;
+    padding: 14px 22px 0;
+    font-size: 13px; font-weight: 500;
+    color: rgba(255,255,255,0.82);
+    text-align: center; line-height: 1.55;
+    z-index: 20;
+    min-height: 60px;
+    transition: opacity 0.4s ease;
+  }
+
+  /* Three.js canvas area */
+  #crystal-container {
+    position: absolute;
+    top: 132px; left: 20px; right: 20px;
+    height: 216px;
+    z-index: 10;
+  }
+  #crystal-container canvas {
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: 8px;
+  }
+
+  /* Waveform */
+  .waveform {
+    position: absolute;
+    bottom: 96px; left: 0; right: 0;
+    display: flex; align-items: center; justify-content: center;
+    gap: 2.5px; height: 30px; z-index: 20;
+  }
+  .w-bar {
+    width: 2.5px; border-radius: 100px;
+    background: linear-gradient(180deg, rgba(180,200,255,0.85), rgba(180,255,220,0.5));
+    transform-origin: center;
+  }
+
+  .state-chip {
+    position: absolute;
+    bottom: 64px; left: 0; right: 0;
+    display: flex; justify-content: center; z-index: 20;
+  }
+  .state-chip span {
+    font-size: 8.5px; letter-spacing: 2.5px; color: rgba(255,255,255,0.2);
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-top-color: rgba(255,255,255,0.18);
+    padding: 5px 14px; border-radius: 100px;
+  }
+
+  .irid-bottom {
+    position: absolute; bottom: 48px; left: 0; right: 0; height: 1px; z-index: 20;
+    background: linear-gradient(90deg,
+      transparent 0%,
+      rgba(180,255,220,0.18) 25%,
+      rgba(180,200,255,0.22) 50%,
+      rgba(220,180,255,0.18) 75%,
+      transparent 100%
+    );
+  }
+
+  .end-btn {
+    position: absolute; bottom: 18px; left: 0; right: 0;
+    display: flex; justify-content: center; z-index: 20;
+  }
+  .end-btn span {
+    font-size: 10px; color: rgba(255,255,255,0.14);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 100px; padding: 5px 18px;
+    letter-spacing: 0.4px;
+  }
+
+  /* Controls */
+  .controls {
+    margin-top: 24px;
+    display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;
+  }
+  .ctrl-btn {
+    font-size: 11px; font-weight: 500;
+    color: rgba(255,255,255,0.38);
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 100px; padding: 8px 16px;
+    cursor: pointer; transition: all 0.2s ease;
+  }
+  .ctrl-btn:hover { background: rgba(255,255,255,0.09); color: rgba(255,255,255,0.65); }
+  .ctrl-btn.active {
+    background: rgba(255,255,255,0.1);
+    border-color: rgba(255,255,255,0.32);
+    color: #fff;
+  }
+  .ctrl-hint {
+    font-size: 11px; color: rgba(255,255,255,0.2);
+    text-align: center; margin-top: 10px; letter-spacing: 0.3px;
+  }
+</style>
+</head>
+<body>
+
+<h2>3D Morphing Crystal</h2>
+<p class="subtitle">Liquidy morph between forms as conversation shifts.<br>Iridescent — no accent color, just light through glass.</p>
+
+<div class="phone">
+  <div class="bg"></div>
+
+  <div class="top-bar">
+    <div class="subject-lbl">PHYSICS 101</div>
+    <div class="q-badge">Q 2 / 5</div>
+  </div>
+  <div class="irid-top"></div>
+
+  <div class="q-text" id="q-text">What are Newton's three laws of motion?</div>
+
+  <div id="crystal-container"></div>
+
+  <div class="waveform" id="waveform">
+    <div class="w-bar" style="height:5px"></div>
+    <div class="w-bar" style="height:9px"></div>
+    <div class="w-bar" style="height:16px"></div>
+    <div class="w-bar" style="height:24px"></div>
+    <div class="w-bar" style="height:28px"></div>
+    <div class="w-bar" style="height:22px"></div>
+    <div class="w-bar" style="height:18px"></div>
+    <div class="w-bar" style="height:13px"></div>
+    <div class="w-bar" style="height:8px"></div>
+    <div class="w-bar" style="height:20px"></div>
+    <div class="w-bar" style="height:26px"></div>
+    <div class="w-bar" style="height:18px"></div>
+    <div class="w-bar" style="height:7px"></div>
+  </div>
+
+  <div class="state-chip"><span id="chip-lbl">LISTENING</span></div>
+  <div class="irid-bottom"></div>
+  <div class="end-btn"><span>End session</span></div>
+</div>
+
+<div class="controls">
+  <button class="ctrl-btn active" onclick="setState('listening',this)">Listening</button>
+  <button class="ctrl-btn" onclick="setState('speaking',this)">AI Speaking</button>
+  <button class="ctrl-btn" onclick="setState('evaluating',this)">Evaluating</button>
+  <button class="ctrl-btn" onclick="setState('correct',this)">Correct!</button>
+</div>
+<div class="ctrl-hint">← tap to simulate conversation states</div>
+
+<script>
+// ── Three.js setup ──────────────────────────────────────────
+const container = document.getElementById('crystal-container');
+const W = container.offsetWidth || 228;
+const H = container.offsetHeight || 216;
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setSize(W, H);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+container.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(42, W / H, 0.1, 100);
+camera.position.set(0, 0, 3.8);
+
+// Lights — designed for iridescent crystal look
+const ambient = new THREE.AmbientLight(0x0a0a14, 1.2);
+scene.add(ambient);
+
+const keyLight = new THREE.DirectionalLight(0xffffff, 2.8);
+keyLight.position.set(2.5, 4, 2);
+scene.add(keyLight);
+
+// Rim lights with very subtle color — gives the iridescent feel
+const rimA = new THREE.DirectionalLight(0xb0c8ff, 1.2);
+rimA.position.set(-2, 0, -2);
+scene.add(rimA);
+
+const rimB = new THREE.DirectionalLight(0xffd0ff, 0.7);
+rimB.position.set(2, -2, -1);
+scene.add(rimB);
+
+const rimC = new THREE.DirectionalLight(0xb0ffd8, 0.5);
+rimC.position.set(0, -3, 1);
+scene.add(rimC);
+
+// ── Geometry — subdivided sphere we deform each frame ───────
+const SEG = 56;
+const geo = new THREE.SphereGeometry(1, SEG, SEG);
+const basePosArr = geo.attributes.position.array.slice();
+const nVerts = basePosArr.length / 3;
+
+// Precompute spherical coords (unit sphere)
+const thetas = new Float32Array(nVerts); // polar from y-axis
+const phis   = new Float32Array(nVerts); // azimuthal
+for (let i = 0; i < nVerts; i++) {
+  const y = Math.max(-1, Math.min(1, basePosArr[i*3+1]));
+  thetas[i] = Math.acos(y);
+  phis[i]   = Math.atan2(basePosArr[i*3+2], basePosArr[i*3]);
+}
+
+// ── Material — crystal glass + iridescence ──────────────────
+const mat = new THREE.MeshPhysicalMaterial({
+  color:              new THREE.Color(0x0a0c14),
+  roughness:          0.02,
+  metalness:          0.04,
+  transmission:       0.88,
+  ior:                1.72,
+  thickness:          1.2,
+  iridescence:        1.0,
+  iridescenceIOR:     2.0,
+  iridescenceThicknessRange: [80, 700],
+  reflectivity:       0.9,
+  clearcoat:          0.4,
+  clearcoatRoughness: 0.0,
+  transparent:        true,
+  opacity:            0.97,
+  side:               THREE.DoubleSide,
+  envMapIntensity:    0.6,
+});
+
+const mesh = new THREE.Mesh(geo, mat);
+scene.add(mesh);
+
+// ── Shape radius functions ───────────────────────────────────
+function shapeSphere(th, ph) {
+  return 1.0;
+}
+
+function shapeGem(th, ph) {
+  // Elongated octahedral gem — pointed top/bottom, hexagonal equator
+  const pole  = Math.pow(Math.abs(Math.cos(th)), 0.6); // stronger near poles
+  const facet = 0.96 + 0.04 * Math.abs(Math.cos(3 * ph)); // 6-fold
+  return (0.72 + 0.42 * pole) * facet;
+}
+
+function shapeDiamond(th, ph) {
+  // Tall brilliant-cut diamond
+  const taper   = Math.sin(th);                // 0 at poles → 1 at equator
+  const crown   = Math.max(0, Math.cos(th));   // top half only
+  const pavilion= Math.max(0, -Math.cos(th));  // bottom half
+  // crown is wide at girdle, point at top; pavilion mirrors
+  return 0.38 + 0.72 * taper * 0.9 + 0.1 * (crown + pavilion);
+}
+
+function shapeCube(th, ph) {
+  // Rounded cube via harmonic approximation
+  const s = Math.sin(th);
+  const c = Math.cos(th);
+  const x = s * Math.cos(ph);
+  const y = c;
+  const z = s * Math.sin(ph);
+  // L-inf norm approximation
+  const linf = Math.pow(
+    Math.pow(Math.abs(x), 8) + Math.pow(Math.abs(y), 8) + Math.pow(Math.abs(z), 8),
+    1/8
+  );
+  return 0.82 / (linf + 0.01);
+}
+
+function shapeBurst(th, ph) {
+  // Faceted starburst / spiky
+  const base   = 0.80;
+  const spikes = 0.30 * Math.abs(Math.sin(5 * ph)) * Math.sin(th);
+  const poles  = 0.10 * Math.pow(Math.abs(Math.cos(th)), 0.3);
+  return base + spikes + poles;
+}
+
+const shapeFns = { gem: shapeGem, sphere: shapeSphere, diamond: shapeDiamond, cube: shapeCube, burst: shapeBurst };
+
+// ── Morph state ──────────────────────────────────────────────
+let fromR = new Float32Array(nVerts);
+let toR   = new Float32Array(nVerts);
+let morphT = 1.0;
+const MORPH_MS = 1100;
+let morphStart = 0;
+let liquid = 0.0;
+let liquidTarget = 0.02;
+let currentFn = shapeGem;
+
+// Init
+for (let i = 0; i < nVerts; i++) {
+  fromR[i] = shapeGem(thetas[i], phis[i]);
+  toR[i]   = fromR[i];
+}
+
+function snapCurrentR() {
+  // Capture current displaced radius per vertex
+  const p = geo.attributes.position.array;
+  for (let i = 0; i < nVerts; i++) {
+    const x = p[i*3], y = p[i*3+1], z = p[i*3+2];
+    fromR[i] = Math.sqrt(x*x + y*y + z*z);
+  }
+}
+
+function startMorph(name, ms = MORPH_MS) {
+  snapCurrentR();
+  const fn = shapeFns[name] || shapeGem;
+  currentFn = fn;
+  for (let i = 0; i < nVerts; i++) toR[i] = fn(thetas[i], phis[i]);
+  morphT = 0;
+  morphStart = performance.now();
+  liquidTarget = 0.18; // spike liquid during transition
+}
+
+function easeInOutQuint(t) {
+  return t < 0.5 ? 16*t*t*t*t*t : 1 - Math.pow(-2*t+2, 5)/2;
+}
+
+// ── Auto-morph cycle while listening ────────────────────────
+const CYCLE = ['sphere', 'diamond', 'gem', 'cube', 'gem', 'sphere', 'gem'];
+let cycleIdx = 0;
+let autoTimer;
+
+function scheduleCycle() {
+  clearTimeout(autoTimer);
+  const delay = 2000 + Math.random() * 1200;
+  autoTimer = setTimeout(() => {
+    cycleIdx = (cycleIdx + 1) % CYCLE.length;
+    startMorph(CYCLE[cycleIdx], 1000);
+    scheduleCycle();
+  }, delay);
+}
+
+// ── Animation loop ───────────────────────────────────────────
+const posArr = geo.attributes.position.array;
+
+function animate(now) {
+  requestAnimationFrame(animate);
+
+  const t01 = now * 0.001;
+
+  // Progress morph
+  if (morphT < 1) {
+    morphT = Math.min((now - morphStart) / MORPH_MS, 1);
+  }
+  liquidTarget = morphT < 1 ? 0.18 : 0.03;
+  liquid += (liquidTarget - liquid) * 0.04;
+
+  const tEased = easeInOutQuint(morphT);
+
+  // Deform vertices
+  for (let i = 0; i < nVerts; i++) {
+    const th = thetas[i], ph = phis[i];
+
+    // Interpolated radius
+    let r = fromR[i] * (1 - tEased) + toR[i] * tEased;
+
+    // Liquid: low-frequency oscillation, amplitude spikes during morph
+    r += liquid * (
+        0.14 * Math.sin(th * 3.1 + t01 * 2.4 + ph * 1.3) +
+        0.09 * Math.sin(ph * 2.7 + t01 * 1.9 + th * 0.8) +
+        0.05 * Math.cos(th * 5.2 + t01 * 3.1)
+    );
+
+    // Gentle idle breathe
+    r += 0.014 * Math.sin(t01 * 0.9 + th * 1.8 + ph * 1.2);
+
+    const ox = basePosArr[i*3], oy = basePosArr[i*3+1], oz = basePosArr[i*3+2];
+    posArr[i*3]   = ox * r;
+    posArr[i*3+1] = oy * r;
+    posArr[i*3+2] = oz * r;
+  }
+
+  geo.attributes.position.needsUpdate = true;
+  geo.computeVertexNormals();
+
+  // Slow rotation
+  mesh.rotation.y  = t01 * 0.28;
+  mesh.rotation.x  = Math.sin(t01 * 0.17) * 0.18;
+
+  // Pulse scale slightly during morph
+  const pulseFactor = 1 + 0.025 * Math.sin(morphT * Math.PI);
+  mesh.scale.setScalar(pulseFactor);
+
+  renderer.render(scene, camera);
+
+  // Waveform
+  animateWave(now);
+}
+
+requestAnimationFrame(animate);
+scheduleCycle();
+
+// ── Waveform ─────────────────────────────────────────────────
+const bars = document.querySelectorAll('.w-bar');
+let waveOn = true;
+
+function animateWave(now) {
+  bars.forEach((b, i) => {
+    if (!waveOn) { b.style.transform = 'scaleY(0.2)'; b.style.opacity = '0.2'; return; }
+    const ph = now / 750 + i * 0.42;
+    const s = 0.28 + 0.72 * (0.5 + 0.5 * Math.sin(ph));
+    b.style.transform = `scaleY(${s.toFixed(3)})`;
+    b.style.opacity   = (0.3 + 0.7 * s).toFixed(3);
+  });
+}
+
+// ── State control ─────────────────────────────────────────────
+const STATE_CFG = {
+  listening:  { shape: 'gem',     label: 'LISTENING',   wave: true,  q: 'What are Newton\'s three laws of motion?' },
+  speaking:   { shape: 'diamond', label: 'AI SPEAKING', wave: true,  q: 'Great start — the first law is inertia. Can you name the second?' },
+  evaluating: { shape: 'cube',    label: 'EVALUATING',  wave: false, q: 'Evaluating your answer…' },
+  correct:    { shape: 'burst',   label: 'CORRECT',     wave: false, q: 'Excellent! 3/3 correct — your best session yet.' },
+};
+
+function setState(key, btn) {
+  const cfg = STATE_CFG[key];
+  document.getElementById('chip-lbl').textContent = cfg.label;
+  document.getElementById('q-text').textContent = cfg.q;
+  waveOn = cfg.wave;
+
+  document.querySelectorAll('.ctrl-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+
+  clearTimeout(autoTimer);
+  startMorph(cfg.shape, key === 'correct' ? 500 : 900);
+
+  if (key === 'listening') scheduleCycle();
+}
+</script>
+</body>
+</html>
