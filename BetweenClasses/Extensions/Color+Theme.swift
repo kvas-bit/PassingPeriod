@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 extension Color {
     // Backgrounds
@@ -33,4 +34,7 @@ extension Color {
         }
         self.init(red: r, green: g, blue: b)
     }
+
+    /// For SceneKit / UIKit bridges (e.g. knowledge graph nodes).
+    var uiColor: UIColor { UIColor(self) }
 }
