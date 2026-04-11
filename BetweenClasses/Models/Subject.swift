@@ -55,4 +55,26 @@ final class Subject {
         else { return false }
         return todayMins > 15
     }
+
+    var topicNames: [String] {
+        let names = notes
+            .map { $0.topicName.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .map { $0.isEmpty ? "Unsorted" : $0 }
+        return Array(Set(names)).sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
+    }
+
+    var notesByTopic: [(topic: String, notes: [Note])] {
+        let grouped = Dictionary(grouping: notes) { note in
+            let trimmed = note.topicName.trimmingCharacters(in: .whitespacesAndNewlines)
+            return trimmed.isEmpty ? "Unsorted" : trimmed
+        }
+        return grouped
+            .map { key, value in
+                (
+                    topic: key,
+                    notes: value.sorted { $0.createdAt > $1.createdAt }
+                )
+            }
+            .sorted { $0.topic.localizedCaseInsensitiveCompare($1.topic) == .orderedAscending }
+    }
 }
