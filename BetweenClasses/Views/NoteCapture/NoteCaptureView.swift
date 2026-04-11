@@ -10,17 +10,13 @@ struct NoteCaptureView: View {
     @State private var captureRequested = false
 
     var body: some View {
-        ZStack {
-            Color.bgPrimary.ignoresSafeArea()
+        ZStack(alignment: .bottom) {
+            // Camera fills full screen edge-to-edge
+            CameraPreviewView(captureRequested: $captureRequested, onCapture: handleCapture)
+                .ignoresSafeArea()
 
-            VStack(spacing: 0) {
-                // Camera preview
-                CameraPreviewView(captureRequested: $captureRequested, onCapture: handleCapture)
-                    .ignoresSafeArea(edges: .top)
-                    .overlay(alignment: .bottom) {
-                        captureControls
-                    }
-            }
+            // Controls float above tab bar — 83pt clears the custom tab bar on all iPhones
+            captureControls
 
             // Processing overlay
             if isProcessing {
@@ -72,7 +68,7 @@ struct NoteCaptureView: View {
             Color.clear.frame(width: 48, height: 48)
         }
         .padding(.horizontal, 40)
-        .padding(.bottom, 40)
+        .padding(.bottom, 90)
     }
 
     private var processingOverlay: some View {

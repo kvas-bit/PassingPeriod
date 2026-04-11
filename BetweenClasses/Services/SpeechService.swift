@@ -37,11 +37,11 @@ final class SpeechService: NSObject {
         guard permissionGranted else { throw SpeechError.notAuthorized }
         guard let recognizer, recognizer.isAvailable else { throw SpeechError.recognizerUnavailable }
 
-        stopListening()
+        _ = stopListening()
         self.onSilence = onSilenceDetected
 
         let audioSession = AVAudioSession.sharedInstance()
-        try audioSession.setCategory(.playAndRecord, mode: .measurement, options: [.allowBluetooth, .duckOthers])
+        try audioSession.setCategory(.playAndRecord, mode: .measurement, options: [.allowBluetoothHFP, .duckOthers])
         try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
 
         recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
@@ -103,10 +103,12 @@ final class SpeechService: NSObject {
     private func resetSilenceTimer() {
         silenceTimer?.invalidate()
         silenceTimer = Timer.scheduledTimer(withTimeInterval: silenceThreshold, repeats: false) { [weak self] _ in
-            guard let self else { return }
-            let transcript = self.stopListening()
-            self.onSilence?(transcript)
-            self.onSilence = nil
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                let transcript = self.stopListening()
+                self.onSilence?(transcript)
+                self.onSilence = nil
+            }
         }
     }
 }
