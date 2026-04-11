@@ -23,10 +23,10 @@ struct CanvasConnectView: View {
                         // Canvas section
                         sectionHeader("Canvas", icon: "graduationcap.fill")
 
-                        inputField(label: "School domain", placeholder: "e.g. berkeley", text: $school)
+                        inputField(label: "School domain", placeholder: "e.g. berkeley or canvas.berkeley.edu", text: $school)
                         secureField(label: "Access token", placeholder: "Paste from Canvas Settings", text: $token)
 
-                        Text("Generate at: Canvas → Account → Settings → Approved Integrations → New Access Token")
+                        Text("Domain: just the subdomain (berkeley) or full hostname (canvas.school.edu). Token: Canvas → Account → Settings → Approved Integrations → New Access Token")
                             .bcCaption()
                             .foregroundStyle(Color.textTertiary)
 

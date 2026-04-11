@@ -8,7 +8,13 @@ struct CanvasService {
         (try? KeychainService.retrieve(KeychainKey.canvasToken)) ?? ""
     }
     private static var baseURL: String {
-        "https://\(school).instructure.com/api/v1"
+        let s = school
+        // If user entered a full domain (e.g. "canvas.ucdavis.edu"), use it directly.
+        // Otherwise assume Instructure-hosted subdomain (e.g. "ucdavis" → "ucdavis.instructure.com").
+        if s.contains(".") {
+            return "https://\(s)/api/v1"
+        }
+        return "https://\(s).instructure.com/api/v1"
     }
 
     // MARK: - Fetch enrolled courses → [Subject]
