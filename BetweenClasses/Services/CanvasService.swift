@@ -35,7 +35,7 @@ struct CanvasService {
         let courses = try JSONDecoder().decode([CanvasCourse].self, from: data)
         return courses.map { course in
             let resolvedName = course.courseCode ?? course.name
-            Subject(
+            return Subject(
                 name: resolvedName,
                 instructor: "",
                 colorHex: Color.generatedSubjectHex(for: resolvedName),
