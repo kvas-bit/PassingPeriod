@@ -135,6 +135,8 @@ struct SCNViewWrapper: UIViewRepresentable {
         let scene = GraphScene()
         let data = GraphDataBuilder.build(from: subjects)
         scene.build(from: data)
+        // Set scene background to match app dark background (default is white, causing the white blob)
+        scene.background.contents = UIColor(red: 0.031, green: 0.035, blue: 0.039, alpha: 1)
         view.scene = scene
         sceneRef.scene = scene
 
