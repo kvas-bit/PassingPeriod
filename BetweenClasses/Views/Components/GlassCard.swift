@@ -7,7 +7,7 @@ struct GlassCard<Content: View>: View {
     @ViewBuilder var content: () -> Content
 
     init(
-        cornerRadius: CGFloat = 20,
+        cornerRadius: CGFloat = BCRadius.panel,
         padding: EdgeInsets = EdgeInsets(top: 20, leading: 20, bottom: 20, trailing: 20),
         @ViewBuilder content: @escaping () -> Content
     ) {
@@ -27,14 +27,22 @@ struct GlassCard<Content: View>: View {
 struct GlassChip: View {
     let text: String
     var textColor: Color = .textPrimary
+    var leadingSymbol: String?
 
     var body: some View {
-        Text(text)
-            .bcCaption()
-            .foregroundStyle(textColor)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .glassCard(cornerRadius: 100)
+        HStack(spacing: 6) {
+            if let leadingSymbol {
+                Image(systemName: leadingSymbol)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(textColor.opacity(0.85))
+            }
+            Text(text)
+                .bcCaption()
+                .foregroundStyle(textColor)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .glassCard(cornerRadius: BCRadius.chip)
     }
 }
 
