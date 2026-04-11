@@ -55,6 +55,33 @@ struct ClassTime: Codable, Identifiable, Hashable {
         let diff = startMins - nowMins
         return diff > 0 ? diff : nil
     }
+
+    /// Minutes until next occurrence of this weekly class (looks ahead up to 7 days).
+    /// Returns nil only if scheduleTimes is empty.
+    func minutesUntilNextWeeklyOccurrence() -> Int? {
+        let cal = Calendar.current
+        let now = Date()
+        let currentWeekday = cal.component(.weekday, from: now)
+        let h = cal.component(.hour, from: now)
+        let m = cal.component(.minute, from: now)
+        let nowMins   = h * 60 + m
+        let startMins = startHour * 60 + startMin
+
+        // Today and still upcoming
+        if currentWeekday == weekday && startMins > nowMins {
+            return startMins - nowMins
+        }
+
+        // Next occurrence within the coming week
+        for daysAhead in 1...7 {
+            let target = ((currentWeekday - 1 + daysAhead) % 7) + 1
+            if target == weekday {
+                let minsUntilMidnight = (24 * 60) - nowMins
+                return minsUntilMidnight + (daysAhead - 1) * 24 * 60 + startMins
+            }
+        }
+        return nil
+    }
 }
 
 extension Array {

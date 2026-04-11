@@ -49,21 +49,25 @@ struct iCalService {
                 dtStartLine = nil; dtEndLine = nil
                 summary = nil; location = nil; rrule = nil
             } else if l == "END:VEVENT", inEvent {
+                // Only import recurring weekly events — these are actual classes.
+                // One-time events (homework reminders, advising, etc.) have no RRULE and are excluded.
                 if let startLine = dtStartLine,
                    let endLine   = dtEndLine,
-                   let name      = summary, !name.isEmpty {
+                   let name      = summary, !name.isEmpty,
+                   let rule      = rrule,
+                   rule.uppercased().contains("FREQ=WEEKLY") {
                     let times = buildClassTimes(
                         startLine: startLine,
                         endLine: endLine,
-                        rrule: rrule,
+                        rrule: rule,
                         room: location ?? ""
                     )
                     var existing = result[name] ?? []
                     for ct in times {
-                        let isDupe = existing.contains {
-                            $0.weekday == ct.weekday &&
-                            $0.startHour == ct.startHour &&
-                            $0.startMin  == ct.startMin
+                        let isDupe = existing.contains { e in
+                            e.weekday == ct.weekday
+                                && e.startHour == ct.startHour
+                                && e.startMin  == ct.startMin
                         }
                         if !isDupe { existing.append(ct) }
                     }
