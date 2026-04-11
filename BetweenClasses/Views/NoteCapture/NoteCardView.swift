@@ -15,6 +15,7 @@ struct PressButtonStyle: ButtonStyle {
 struct NoteCardView: View {
     let note: Note
     let subjects: [Subject]
+    @Environment(AppState.self) private var appState
 
     @State private var showDetail = false
 
@@ -42,6 +43,21 @@ struct NoteCardView: View {
         return trimmed.isEmpty ? "Unsorted" : trimmed
     }
 
+    private var subjectAccent: Color {
+        _ = appState.colorCodingEnabled
+        return subject?.displayColor ?? Color.textPrimary
+    }
+
+    private var topicAccent: Color {
+        _ = appState.colorCodingEnabled
+        return subject?.topicColor(for: topicName) ?? Color.textTertiary
+    }
+
+    private var noteAccent: Color {
+        _ = appState.colorCodingEnabled
+        return subject?.noteColor(for: topicName) ?? Color.white
+    }
+
     private var questionBadge: String {
         note.questions.isEmpty ? "No quiz" : "\(note.questions.count) Q"
     }
@@ -61,11 +77,11 @@ struct NoteCardView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(subjectName)
                             .bcCaption()
-                            .foregroundStyle(subject?.displayColor ?? Color.textPrimary)
+                            .foregroundStyle(subjectAccent)
                             .lineLimit(1)
                         Text(topicName)
                             .font(.system(size: 11, weight: .medium))
-                            .foregroundStyle(subject?.topicColor(for: topicName) ?? Color.textTertiary)
+                            .foregroundStyle(topicAccent)
                             .lineLimit(1)
                     }
                     Spacer()
@@ -99,7 +115,7 @@ struct NoteCardView: View {
                         Capsule()
                             .fill(note.questions.isEmpty
                                   ? Color.white.opacity(0.05)
-                                  : (subject?.noteColor(for: topicName).opacity(0.24) ?? Color.white.opacity(0.12)))
+                                  : noteAccent.opacity(0.24))
                     )
             }
             .padding(12)
@@ -107,7 +123,7 @@ struct NoteCardView: View {
             .glassCard(cornerRadius: BCRadius.card)
             .overlay(
                 RoundedRectangle(cornerRadius: BCRadius.card, style: .continuous)
-                    .stroke((subject?.topicColor(for: topicName) ?? Color.white).opacity(0.18), lineWidth: 1)
+                    .stroke(topicAccent.opacity(0.18), lineWidth: 1)
             )
         }
         .buttonStyle(PressButtonStyle())

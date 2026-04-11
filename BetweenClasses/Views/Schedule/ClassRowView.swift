@@ -2,7 +2,13 @@ import SwiftUI
 
 struct ClassRowView: View {
     let subject: Subject
+    @Environment(AppState.self) private var appState
     @State private var showDetail = false
+
+    private var subjectAccent: Color {
+        _ = appState.colorCodingEnabled
+        return subject.displayColor
+    }
 
     private var isFreeNow: Bool { subject.isFreeWindow }
     private var isHappeningNow: Bool {
@@ -13,7 +19,7 @@ struct ClassRowView: View {
         Button { showDetail = true } label: {
             HStack(spacing: 12) {
                 Circle()
-                    .fill(subject.displayColor)
+                    .fill(subjectAccent)
                     .frame(width: 8, height: 8)
 
                 VStack(alignment: .leading, spacing: 2) {
@@ -46,7 +52,7 @@ struct ClassRowView: View {
             .glassCard(cornerRadius: BCRadius.card)
             .overlay(
                 RoundedRectangle(cornerRadius: BCRadius.card, style: .continuous)
-                    .stroke(subject.displayColor.opacity(0.24), lineWidth: 1)
+                    .stroke(subjectAccent.opacity(0.24), lineWidth: 1)
             )
         }
         .buttonStyle(.plain)

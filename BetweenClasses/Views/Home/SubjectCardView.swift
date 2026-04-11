@@ -4,6 +4,11 @@ struct SubjectCardView: View {
     let subject: Subject
     @Environment(AppState.self) private var appState
 
+    private var subjectAccent: Color {
+        _ = appState.colorCodingEnabled
+        return subject.displayColor
+    }
+
     var body: some View {
         Button {
             appState.startQuiz(for: subject)
@@ -12,7 +17,7 @@ struct SubjectCardView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
                         Circle()
-                            .fill(subject.displayColor)
+                            .fill(subjectAccent)
                             .frame(width: 8, height: 8)
                         Text(subject.name)
                             .bcBody()
@@ -32,7 +37,7 @@ struct SubjectCardView: View {
             }
             .overlay(
                 RoundedRectangle(cornerRadius: BCRadius.card, style: .continuous)
-                    .stroke(subject.displayColor.opacity(0.22), lineWidth: 1)
+                    .stroke(subjectAccent.opacity(0.22), lineWidth: 1)
             )
         }
         .buttonStyle(PressButtonStyle())
