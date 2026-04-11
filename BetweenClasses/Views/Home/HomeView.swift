@@ -218,9 +218,14 @@ private struct NextClassCard: View {
             VStack(alignment: .leading, spacing: 16) {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(subject.name)
-                            .bcHeadline()
-                            .foregroundStyle(Color.textPrimary)
+                        HStack(spacing: 8) {
+                            Circle()
+                                .fill(subject.displayColor)
+                                .frame(width: 9, height: 9)
+                            Text(subject.name)
+                                .bcHeadline()
+                                .foregroundStyle(Color.textPrimary)
+                        }
                         Text(timeLabel)
                             .bcBody()
                             .foregroundStyle(Color.textSecond)
@@ -243,6 +248,10 @@ private struct NextClassCard: View {
                 .buttonStyle(BCPrimaryButtonStyle())
             }
         }
+        .overlay(
+            RoundedRectangle(cornerRadius: BCRadius.card, style: .continuous)
+                .stroke(subject.displayColor.opacity(0.22), lineWidth: 1)
+        )
     }
 }
 

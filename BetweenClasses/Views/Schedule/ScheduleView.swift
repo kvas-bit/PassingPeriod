@@ -142,8 +142,13 @@ struct ScheduleView: View {
         do {
             let fetched = try await CanvasService.fetchCourses()
             for s in fetched {
-                if let existing = subjects.first(where: { $0.name == s.name }) {
+                if let existing = subjects.first(where: {
+                    (!s.canvasID.isEmpty && $0.canvasID == s.canvasID) || $0.name == s.name
+                }) {
                     if existing.canvasID.isEmpty { existing.canvasID = s.canvasID }
+                    if existing.displayColorHex != existing.colorHex {
+                        existing.colorHex = existing.displayColorHex
+                    }
                 } else {
                     modelContext.insert(s)
                 }
@@ -168,8 +173,11 @@ struct ScheduleView: View {
 
                     if let existing = subjects.first(where: { $0.name == name }) {
                         existing.scheduleTimes = times
+                        if existing.displayColorHex != existing.colorHex {
+                            existing.colorHex = existing.displayColorHex
+                        }
                     } else {
-                        let s = Subject(name: name)
+                        let s = Subject(name: name, colorHex: Color.generatedSubjectHex(for: name))
                         s.scheduleTimes = times
                         modelContext.insert(s)
                     }

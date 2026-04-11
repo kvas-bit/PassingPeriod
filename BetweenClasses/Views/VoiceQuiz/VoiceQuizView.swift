@@ -230,6 +230,10 @@ struct VoiceQuizView: View {
                                     appState.startQuiz(for: subject)
                                 } label: {
                                     HStack(alignment: .top, spacing: 12) {
+                                        Circle()
+                                            .fill(subject.displayColor)
+                                            .frame(width: 10, height: 10)
+                                            .padding(.top, 4)
                                         VStack(alignment: .leading, spacing: 4) {
                                             Text(subject.name)
                                                 .bcHeadline()
@@ -248,6 +252,7 @@ struct VoiceQuizView: View {
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                 }
                                 .buttonStyle(.plain)
+                                .padding(.bottom, 2)
 
                                 HStack(spacing: 10) {
                                     Button("Quiz All") {
@@ -267,6 +272,9 @@ struct VoiceQuizView: View {
                                             appState.startQuiz(for: subject, topicName: entry.topic)
                                         } label: {
                                             HStack(spacing: 12) {
+                                                Capsule()
+                                                    .fill(subject.topicColor(for: entry.topic))
+                                                    .frame(width: 12, height: 28)
                                                 VStack(alignment: .leading, spacing: 4) {
                                                     Text(entry.topic)
                                                         .bcBody()
@@ -303,7 +311,11 @@ struct VoiceQuizView: View {
                                                         .padding(.horizontal, 12)
                                                         .padding(.vertical, 10)
                                                         .frame(maxWidth: .infinity, alignment: .leading)
-                                                        .background(Color.white.opacity(0.04), in: RoundedRectangle(cornerRadius: 10))
+                                                        .background(subject.noteColor(for: entry.topic).opacity(0.14), in: RoundedRectangle(cornerRadius: 10))
+                                                        .overlay(
+                                                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                                                .stroke(subject.noteColor(for: entry.topic).opacity(0.24), lineWidth: 1)
+                                                        )
                                                     }
                                                     .buttonStyle(.plain)
 
@@ -314,7 +326,7 @@ struct VoiceQuizView: View {
                                                             .font(.system(size: 12, weight: .bold))
                                                             .foregroundStyle(Color.textPrimary)
                                                             .frame(width: 34, height: 34)
-                                                            .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
+                                                            .background(subject.topicColor(for: entry.topic).opacity(0.24), in: RoundedRectangle(cornerRadius: 10))
                                                     }
                                                     .buttonStyle(.plain)
                                                     .accessibilityLabel("Quiz this note")
@@ -328,7 +340,11 @@ struct VoiceQuizView: View {
                                         }
                                     }
                                     .padding(12)
-                                    .background(Color.white.opacity(0.03), in: RoundedRectangle(cornerRadius: 14))
+                                    .background(subject.topicColor(for: entry.topic).opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                            .stroke(subject.topicColor(for: entry.topic).opacity(0.18), lineWidth: 1)
+                                    )
                                 }
                             }
                         }
