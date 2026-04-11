@@ -33,6 +33,11 @@ struct NoteCardView: View {
         return "\(days)d ago"
     }
 
+    private var topicName: String {
+        let trimmed = note.topicName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "Unsorted" : trimmed
+    }
+
     private var questionBadge: String {
         note.questions.isEmpty ? "No quiz" : "\(note.questions.count) Q"
     }
@@ -48,11 +53,17 @@ struct NoteCardView: View {
             VStack(alignment: .leading, spacing: 8) {
 
                 // Subject + time row
-                HStack {
-                    Text(subjectName)
-                        .bcCaption()
-                        .foregroundStyle(Color.textPrimary)
-                        .lineLimit(1)
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(subjectName)
+                            .bcCaption()
+                            .foregroundStyle(Color.textPrimary)
+                            .lineLimit(1)
+                        Text(topicName)
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(Color.textTertiary)
+                            .lineLimit(1)
+                    }
                     Spacer()
                     Text(relativeTime)
                         .bcCaption()
@@ -124,6 +135,20 @@ struct NoteDetailSheet: View {
                                     RoundedRectangle(cornerRadius: 12)
                                         .stroke(Color.glassStroke, lineWidth: 1)
                                 )
+                        }
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Topic")
+                                .bcCaption()
+                                .foregroundStyle(Color.textSecond)
+                                .textCase(.uppercase)
+
+                            Text(note.topicName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Unsorted" : note.topicName)
+                                .bcBody()
+                                .foregroundStyle(Color.textPrimary)
+                                .padding(16)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .glassCard()
                         }
 
                         // Full note text
