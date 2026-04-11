@@ -6,7 +6,7 @@ struct PressButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
-            .animation(.spring(response: 0.2, dampingFraction: 0.6), value: configuration.isPressed)
+            .animation(BCMotion.microSpring, value: configuration.isPressed)
     }
 }
 
@@ -62,9 +62,11 @@ struct NoteCardView: View {
                 // Preview text
                 if !previewText.isEmpty {
                     Text(previewText)
-                        .font(.system(size: 11, weight: .regular))
+                        .font(.bcCaption)
+                        .fontWeight(.regular)
                         .foregroundStyle(Color.textSecond)
                         .lineLimit(3)
+                        .tracking(0.2)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
@@ -72,7 +74,8 @@ struct NoteCardView: View {
 
                 // Question count badge
                 Text(questionBadge)
-                    .font(.system(size: 10, weight: .semibold))
+                    .font(.bcCaption)
+                    .fontWeight(.semibold)
                     .tracking(0.3)
                     .foregroundStyle(note.questions.isEmpty ? Color.textTertiary : Color.textPrimary)
                     .padding(.horizontal, 7)
@@ -86,7 +89,7 @@ struct NoteCardView: View {
             }
             .padding(12)
             .frame(minWidth: 160, minHeight: 100, alignment: .topLeading)
-            .glassCard(cornerRadius: 16)
+            .glassCard(cornerRadius: BCRadius.card)
         }
         .buttonStyle(PressButtonStyle())
         .sheet(isPresented: $showDetail) {
