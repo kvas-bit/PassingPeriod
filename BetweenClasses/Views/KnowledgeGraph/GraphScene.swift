@@ -92,12 +92,18 @@ final class GraphScene: SCNScene {
         if dimmed {
             mat.diffuse.contents = tint.withAlphaComponent(0.06)
             mat.emission.contents = tint.withAlphaComponent(0.08)
-        } else if data.type == .subject {
-            mat.diffuse.contents = tint.withAlphaComponent(0.22)
-            mat.emission.contents = tint.withAlphaComponent(0.85)
         } else {
-            mat.diffuse.contents = tint.withAlphaComponent(0.14)
-            mat.emission.contents = tint.withAlphaComponent(0.55)
+            switch data.type {
+            case .subject:
+                mat.diffuse.contents = tint.withAlphaComponent(0.22)
+                mat.emission.contents = tint.withAlphaComponent(0.85)
+            case .topic:
+                mat.diffuse.contents = tint.withAlphaComponent(0.16)
+                mat.emission.contents = tint.withAlphaComponent(0.58)
+            case .note:
+                mat.diffuse.contents = tint.withAlphaComponent(0.10)
+                mat.emission.contents = tint.withAlphaComponent(0.32)
+            }
         }
         return mat
     }
@@ -119,7 +125,15 @@ final class GraphScene: SCNScene {
     }
 
     private func makeNode(_ data: GraphNode) -> SCNNode {
-        let radius: CGFloat = data.type == .subject ? 0.32 : 0.14
+        let radius: CGFloat
+        switch data.type {
+        case .subject:
+            radius = 0.32
+        case .topic:
+            radius = 0.18
+        case .note:
+            radius = 0.11
+        }
         let geo = SCNSphere(radius: radius)
         geo.segmentCount = 28
         geo.firstMaterial = makeSphereMaterial(for: data, dimmed: false)

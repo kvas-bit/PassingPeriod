@@ -18,8 +18,8 @@ enum AppTab: Int, CaseIterable {
         switch self {
         case .home:     return "house.fill"
         case .capture:  return "camera.fill"
-        case .quiz:     return "waveform"
-        case .schedule: return "calendar"
+        case .quiz:     return "brain.head.profile"
+        case .schedule: return "calendar.badge.clock"
         case .graph:    return "circle.hexagongrid.fill"
         }
     }
