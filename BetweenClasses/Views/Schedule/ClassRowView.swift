@@ -54,7 +54,11 @@ struct ClassRowView: View {
 private struct SubjectDetailSheet: View {
     let subject: Subject
     @Environment(AppState.self) private var appState
+    @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+
+    @State private var showAddNote = false
+    @State private var draftText = ""
 
     var body: some View {
         NavigationStack {
@@ -73,7 +77,7 @@ private struct SubjectDetailSheet: View {
                                     Text("No notes yet")
                                         .bcBody()
                                         .foregroundStyle(Color.textSecond)
-                                    Text("Capture notes after class to start quizzing.")
+                                    Text("Snap a photo after class or tap + to type notes manually.")
                                         .bcCaption()
                                         .foregroundStyle(Color.textTertiary)
                                         .multilineTextAlignment(.center)
@@ -121,6 +125,74 @@ private struct SubjectDetailSheet: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Done") { dismiss() }
                         .foregroundStyle(Color.textSecond)
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showAddNote = true
+                    } label: {
+                        Image(systemName: "plus")
+                            .foregroundStyle(Color.textSecond)
+                    }
+                }
+            }
+            .toolbarBackground(Color.bgPrimary, for: .navigationBar)
+            .sheet(isPresented: $showAddNote) {
+                AddNoteSheet(subject: subject, onSave: { text in
+                    let note = Note(extractedText: text, subjectID: subject.id)
+                    modelContext.insert(note)
+                    try? modelContext.save()
+                })
+            }
+        }
+    }
+}
+
+// MARK: - Manual note entry sheet
+
+private struct AddNoteSheet: View {
+    let subject: Subject
+    let onSave: (String) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var text = ""
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Color.bgPrimary.ignoresSafeArea()
+
+                VStack(spacing: 12) {
+                    TextEditor(text: $text)
+                        .bcBody()
+                        .foregroundStyle(Color.textPrimary)
+                        .scrollContentBackground(.hidden)
+                        .padding(14)
+                        .glassCard(cornerRadius: 16)
+                        .frame(maxHeight: .infinity)
+
+                    Text("Type or paste your class notes. The app will generate quiz questions from them.")
+                        .bcCaption()
+                        .foregroundStyle(Color.textTertiary)
+                        .multilineTextAlignment(.center)
+                }
+                .padding(20)
+            }
+            .navigationTitle("Add Notes — \(subject.name)")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                        .foregroundStyle(Color.textSecond)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                        guard !trimmed.isEmpty else { return }
+                        onSave(trimmed)
+                        dismiss()
+                    }
+                    .fontWeight(.semibold)
+                    .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
             .toolbarBackground(Color.bgPrimary, for: .navigationBar)
