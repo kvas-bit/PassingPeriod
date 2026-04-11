@@ -25,6 +25,16 @@ struct ScheduleView: View {
             .navigationTitle("Schedule")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    if !subjects.isEmpty {
+                        Button(role: .destructive) {
+                            clearAll()
+                        } label: {
+                            Image(systemName: "trash")
+                                .foregroundStyle(.red.opacity(0.7))
+                        }
+                    }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         Task { await refresh() }
@@ -100,6 +110,14 @@ struct ScheduleView: View {
             .buttonStyle(.plain)
             .padding(.top, 4)
         }
+    }
+
+    // MARK: - Clear
+
+    private func clearAll() {
+        for subject in subjects { modelContext.delete(subject) }
+        try? modelContext.save()
+        Task { await refresh() }
     }
 
     // MARK: - Refresh
