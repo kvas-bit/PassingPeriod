@@ -18,7 +18,7 @@ final class SpeechService: NSObject {
 
     private var silenceTimer: Timer?
     private var onSilence: ((String) -> Void)?
-    private let silenceThreshold: TimeInterval = 1.5
+    private let silenceThreshold: TimeInterval = 3.5
 
     override init() {
         super.init()

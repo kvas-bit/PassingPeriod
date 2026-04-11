@@ -25,10 +25,20 @@ struct NoteCaptureView: View {
         }
         .sheet(isPresented: $showConfirm) {
             if let data = capturedImage {
-                OCRConfirmView(imageData: data, extractedText: extractedText) { _ in
-                    capturedImage = nil
-                    extractedText = ""
-                }
+                OCRConfirmView(
+                    imageData: data,
+                    extractedText: extractedText,
+                    onSave: { _ in
+                        capturedImage = nil
+                        extractedText = ""
+                    },
+                    onCaptureAnother: {
+                        // Dismiss sheet (showConfirm goes false) then camera is live again
+                        capturedImage = nil
+                        extractedText = ""
+                        showConfirm = false
+                    }
+                )
             }
         }
         .photosPicker(isPresented: $showImagePicker, onPick: handlePickedPhoto)
