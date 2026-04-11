@@ -30,7 +30,8 @@ struct CanvasService {
             Subject(
                 name: course.courseCode ?? course.name,
                 instructor: "",
-                colorHex: "#FFFFFF"
+                colorHex: "#FFFFFF",
+                canvasID: String(course.id)
             )
         }
     }
