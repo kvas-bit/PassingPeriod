@@ -1,75 +1,94 @@
 import SwiftUI
 
+// MARK: - Press button style
+
+struct PressButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
+            .animation(.spring(response: 0.2, dampingFraction: 0.6), value: configuration.isPressed)
+    }
+}
+
+// MARK: - NoteCardView
+
 struct NoteCardView: View {
     let note: Note
     let subjects: [Subject]
 
     @State private var showDetail = false
-    @State private var appeared = false
 
     private var subjectName: String {
         subjects.first { $0.id == note.subjectID }?.name ?? "Unknown"
     }
 
-    private var questionCount: Int { note.questions.count }
+    private var relativeTime: String {
+        let seconds = Date().timeIntervalSince(note.createdAt)
+        let minutes = Int(seconds / 60)
+        let hours   = Int(seconds / 3600)
+        let days    = Int(seconds / 86400)
+        if minutes < 60 { return "\(max(1, minutes))m ago" }
+        if hours   < 24 { return "\(hours)h ago" }
+        if days    == 1 { return "Yesterday" }
+        return "\(days)d ago"
+    }
+
+    private var questionBadge: String {
+        note.questions.isEmpty ? "No quiz" : "\(note.questions.count) Q"
+    }
+
+    private var previewText: String {
+        let trimmed = note.extractedText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.count <= 80 { return trimmed }
+        return String(trimmed.prefix(80)) + "…"
+    }
 
     var body: some View {
         Button { showDetail = true } label: {
-            VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: 8) {
 
-                // Thumbnail or placeholder
-                ZStack(alignment: .topTrailing) {
-                    if let data = note.imageData, let img = UIImage(data: data) {
-                        Image(uiImage: img)
-                            .resizable()
-                            .scaledToFill()
-                            .frame(width: 80, height: 70)
-                            .clipped()
-                    } else {
-                        LinearGradient(
-                            colors: [Color.bgElevated, Color.bgSurface],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                        .frame(width: 80, height: 70)
-                        Image(systemName: "doc.text")
-                            .foregroundStyle(Color.textTertiary)
-                            .font(.system(size: 18))
-                    }
-
-                    // Question count badge
-                    if questionCount > 0 {
-                        Text("\(questionCount)")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(.black)
-                            .padding(.horizontal, 5)
-                            .padding(.vertical, 2)
-                            .background(Color.white, in: Capsule())
-                            .padding(5)
-                    }
+                // Subject + time row
+                HStack {
+                    Text(subjectName)
+                        .bcCaption()
+                        .foregroundStyle(Color.textPrimary)
+                        .lineLimit(1)
+                    Spacer()
+                    Text(relativeTime)
+                        .bcCaption()
+                        .foregroundStyle(Color.textTertiary)
                 }
 
-                // Subject label
-                Text(subjectName)
-                    .bcCaption()
-                    .foregroundStyle(Color.textSecond)
-                    .lineLimit(1)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 6)
-                    .frame(width: 80, alignment: .leading)
+                // Preview text
+                if !previewText.isEmpty {
+                    Text(previewText)
+                        .font(.system(size: 11, weight: .regular))
+                        .foregroundStyle(Color.textSecond)
+                        .lineLimit(3)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                Spacer(minLength: 0)
+
+                // Question count badge
+                Text(questionBadge)
+                    .font(.system(size: 10, weight: .semibold))
+                    .tracking(0.3)
+                    .foregroundStyle(note.questions.isEmpty ? Color.textTertiary : Color.textPrimary)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 3)
+                    .background(
+                        Capsule()
+                            .fill(note.questions.isEmpty
+                                  ? Color.white.opacity(0.05)
+                                  : Color.white.opacity(0.12))
+                    )
             }
-            .frame(width: 80, height: 100)
-            .glassCard(cornerRadius: 12)
-            .clipped()
+            .padding(12)
+            .frame(minWidth: 160, minHeight: 100, alignment: .topLeading)
+            .glassCard(cornerRadius: 16)
         }
-        .buttonStyle(.plain)
-        .scaleEffect(appeared ? 1 : 0.85)
-        .opacity(appeared ? 1 : 0)
-        .onAppear {
-            withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
-                appeared = true
-            }
-        }
+        .buttonStyle(PressButtonStyle())
         .sheet(isPresented: $showDetail) {
             NoteDetailSheet(note: note, subjectName: subjectName)
         }
