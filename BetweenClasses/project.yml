@@ -1,0 +1,47 @@
+name: BetweenClasses
+options:
+  bundleIdPrefix: com.betweenclasses
+  deploymentTarget:
+    iOS: "17.0"
+  xcodeVersion: "15"
+
+settings:
+  SWIFT_VERSION: "5.9"
+  IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+  DEVELOPMENT_TEAM: ""  # Set your team ID here
+
+targets:
+  BetweenClasses:
+    type: application
+    platform: iOS
+    sources:
+      - path: App
+      - path: Models
+      - path: Services
+      - path: Views
+      - path: Extensions
+    resources:
+      - path: Resources
+        optional: true
+    settings:
+      INFOPLIST_FILE: BetweenClasses/Info.plist
+      PRODUCT_BUNDLE_IDENTIFIER: com.betweenclasses.app
+      ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+    entitlements:
+      path: BetweenClasses/BetweenClasses.entitlements
+      properties:
+        keychain-access-groups:
+          - $(AppIdentifierPrefix)com.betweenclasses.app
+    info:
+      path: BetweenClasses/Info.plist
+      properties:
+        UILaunchStoryboardName: LaunchScreen
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        UIRequiresFullScreen: true
+        NSCameraUsageDescription: "Between Classes needs your camera to capture notes."
+        NSMicrophoneUsageDescription: "Between Classes uses your mic to hear your answers."
+        NSSpeechRecognitionUsageDescription: "Between Classes transcribes your spoken answers."
+        UIBackgroundModes:
+          - audio
+        UIAppFonts: []
