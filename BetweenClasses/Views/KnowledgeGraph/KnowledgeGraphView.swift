@@ -9,12 +9,14 @@ final class NonFocusableSCNView: SCNView {
 }
 
 struct KnowledgeGraphView: View {
+    @Environment(AppState.self) private var appState
     @Query private var subjects: [Subject]
     @State private var selectedNode: GraphNode?
     @State private var localGraphFocus = false
     @State private var sceneRef = GraphSceneRef()
     @State private var appeared = false
     @State private var graphNoteSheet: GraphNoteSheetPayload?
+    @State private var graphTopicSheet: GraphTopicSheetPayload?
 
     var body: some View {
         ZStack {
@@ -92,6 +94,23 @@ struct KnowledgeGraphView: View {
         .sheet(item: $graphNoteSheet) { payload in
             NoteDetailSheet(note: payload.note, subjectName: payload.subjectName)
         }
+        .sheet(item: $graphTopicSheet) { payload in
+            GraphTopicSheet(
+                payload: payload,
+                onOpenNote: { note in
+                    graphTopicSheet = nil
+                    graphNoteSheet = GraphNoteSheetPayload(
+                        id: note.id,
+                        note: note,
+                        subjectName: payload.subject.name
+                    )
+                },
+                onQuizTopic: {
+                    graphTopicSheet = nil
+                    appState.startQuiz(for: payload.subject, topicName: payload.topic)
+                }
+            )
+        }
     }
 
     private struct GraphNoteSheetPayload: Identifiable {
@@ -100,12 +119,32 @@ struct KnowledgeGraphView: View {
         let subjectName: String
     }
 
+    struct GraphTopicSheetPayload: Identifiable {
+        var id: String { "\(subject.id.uuidString)-\(topic)" }
+        let subject: Subject
+        let topic: String
+        let notes: [Note]
+    }
+
     private func subjectName(for subjectID: UUID) -> String {
         subjects.first { $0.id == subjectID }?.name ?? "Note"
     }
 
+    private func resolveSubject(id: UUID) -> Subject? {
+        subjects.first { $0.id == id }
+    }
+
     private func resolveNote(id: UUID) -> Note? {
         subjects.flatMap(\.notes).first { $0.id == id }
+    }
+
+    private func resolveTopicPayload(subjectID: UUID, topicName: String) -> GraphTopicSheetPayload? {
+        guard let subject = resolveSubject(id: subjectID) else { return nil }
+        let notes = subject.notesByTopic.first {
+            $0.topic.localizedCaseInsensitiveCompare(topicName) == .orderedSame
+        }?.notes ?? []
+        guard !notes.isEmpty else { return nil }
+        return GraphTopicSheetPayload(subject: subject, topic: topicName, notes: notes)
     }
 
     private func nodeTooltip(_ node: GraphNode) -> some View {
@@ -120,12 +159,17 @@ struct KnowledgeGraphView: View {
                             .bcBody()
                             .foregroundStyle(Color.textPrimary)
                             .lineLimit(2)
-                        if node.type == .subject {
-                            Text("\(node.noteCount) note\(node.noteCount == 1 ? "" : "s")")
+                        switch node.type {
+                        case .subject:
+                            Text("\(node.noteCount) note\(node.noteCount == 1 ? "" : "s") across this class")
                                 .bcCaption()
                                 .foregroundStyle(Color.textSecond)
-                        } else {
-                            Text("Linked to class graph")
+                        case .topic:
+                            Text("\(node.noteCount) note\(node.noteCount == 1 ? "" : "s") in this topic")
+                                .bcCaption()
+                                .foregroundStyle(Color.textSecond)
+                        case .note:
+                            Text(node.noteCount == 0 ? "Tap in to read the note" : "\(node.noteCount) saved question\(node.noteCount == 1 ? "" : "s")")
                                 .bcCaption()
                                 .foregroundStyle(Color.textSecond)
                         }
@@ -133,22 +177,53 @@ struct KnowledgeGraphView: View {
                     Spacer()
                 }
 
-                if node.type == .topic, let n = resolveNote(id: node.id) {
-                    Button {
-                        graphNoteSheet = GraphNoteSheetPayload(
-                            id: n.id,
-                            note: n,
-                            subjectName: subjectName(for: n.subjectID)
-                        )
-                    } label: {
-                        Text("Open note")
-                            .font(.bcCaption)
-                            .fontWeight(.semibold)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 10)
+                switch node.type {
+                case .subject:
+                    if let subject = resolveSubject(id: node.subjectID) {
+                        Button {
+                            appState.startQuiz(for: subject)
+                        } label: {
+                            Text("Quiz whole subject")
+                                .font(.bcCaption)
+                                .fontWeight(.semibold)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 10)
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(Color.white.opacity(0.2))
                     }
-                    .buttonStyle(.bordered)
-                    .tint(Color.white.opacity(0.2))
+                case .topic:
+                    if let topic = node.topicName, let payload = resolveTopicPayload(subjectID: node.subjectID, topicName: topic) {
+                        Button {
+                            graphTopicSheet = payload
+                        } label: {
+                            Text("Open topic notes")
+                                .font(.bcCaption)
+                                .fontWeight(.semibold)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 10)
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(Color.white.opacity(0.2))
+                    }
+                case .note:
+                    if let n = resolveNote(id: node.id) {
+                        Button {
+                            graphNoteSheet = GraphNoteSheetPayload(
+                                id: n.id,
+                                note: n,
+                                subjectName: subjectName(for: n.subjectID)
+                            )
+                        } label: {
+                            Text("Open note")
+                                .font(.bcCaption)
+                                .fontWeight(.semibold)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 10)
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(Color.white.opacity(0.2))
+                    }
                 }
             }
         }
@@ -167,6 +242,64 @@ struct KnowledgeGraphView: View {
                 .foregroundStyle(Color.textSecond)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 40)
+        }
+    }
+}
+
+private struct GraphTopicSheet: View {
+    let payload: KnowledgeGraphView.GraphTopicSheetPayload
+    let onOpenNote: (Note) -> Void
+    let onQuizTopic: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Color.bgPrimary.ignoresSafeArea()
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        GlassCard {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text(payload.subject.name)
+                                    .bcCaption()
+                                    .foregroundStyle(Color.textSecond)
+                                Text(payload.topic)
+                                    .bcHeadline()
+                                    .foregroundStyle(Color.textPrimary)
+                                Text("\(payload.notes.count) note\(payload.notes.count == 1 ? "" : "s") in this cluster")
+                                    .bcBody()
+                                    .foregroundStyle(Color.textSecond)
+                                Button("Quiz Topic") { onQuizTopic() }
+                                    .buttonStyle(BCPrimaryButtonStyle())
+                            }
+                        }
+
+                        ForEach(payload.notes) { note in
+                            Button {
+                                onOpenNote(note)
+                            } label: {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text(note.extractedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Untitled note" : String(note.extractedText.trimmingCharacters(in: .whitespacesAndNewlines).prefix(100)))
+                                        .bcBody()
+                                        .foregroundStyle(Color.textPrimary)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .lineLimit(3)
+                                    Text(note.questions.isEmpty ? "Open note" : "\(note.questions.count) saved question\(note.questions.count == 1 ? "" : "s")")
+                                        .bcCaption()
+                                        .foregroundStyle(Color.textTertiary)
+                                }
+                                .padding(14)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .glassCard(cornerRadius: 14)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(20)
+                }
+            }
+            .navigationTitle("Topic")
+            .navigationBarTitleDisplayMode(.inline)
         }
     }
 }

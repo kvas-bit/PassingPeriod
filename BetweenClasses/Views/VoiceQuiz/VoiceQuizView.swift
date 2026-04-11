@@ -8,6 +8,8 @@ struct VoiceQuizView: View {
 
     @State private var manager = QuizSessionManager()
     @State private var appeared = false
+    @State private var organizerSubject: Subject?
+    @State private var selectedLibraryNote: Note?
 
     private var isListening: Bool {
         if case .listening = manager.state { return true }
@@ -59,6 +61,34 @@ struct VoiceQuizView: View {
                 }
             }
             .animation(BCMotion.panelSpring, value: manager.state)
+        }
+        .safeAreaInset(edge: .top, spacing: BCSpacing.md) {
+            BCChromeBar(title: appState.quizSubject == nil ? "Voice quiz library" : "Voice quiz session") {
+                HStack(spacing: 14) {
+                    if appState.quizSubject != nil {
+                        Text(quizScopeSummary)
+                            .bcCaption()
+                            .foregroundStyle(Color.textSecond)
+                            .lineLimit(1)
+                    }
+                    if appState.quizSubject != nil {
+                        Button("Library") {
+                            manager.stop()
+                            manager.state = .idle
+                            appState.clearQuizSelection()
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(Color.textSecond)
+                    }
+                }
+            }
+            .padding(.horizontal, BCSpacing.gutter)
+        }
+        .sheet(item: $organizerSubject) { subject in
+            TopicOrganizerSheet(subject: subject)
+        }
+        .sheet(item: $selectedLibraryNote) { note in
+            NoteDetailSheet(note: note, subjectName: subjects.first { $0.id == note.subjectID }?.name ?? "Note")
         }
         .onAppear {
             manager.configure(modelContext: modelContext)
@@ -170,13 +200,15 @@ struct VoiceQuizView: View {
     private var quizLibraryView: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Quiz Library")
-                        .bcHeadline()
-                        .foregroundStyle(Color.textPrimary)
-                    Text("Pick a subject, topic, or single note. Stop burying quiz start behind another screen.")
-                        .bcBody()
-                        .foregroundStyle(Color.textSecond)
+                GlassCard {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Voice Quiz")
+                            .bcHeadline()
+                            .foregroundStyle(Color.textPrimary)
+                        Text("This tab is for study sets and live questioning. Schedule is just class timing + sync.")
+                            .bcBody()
+                            .foregroundStyle(Color.textSecond)
+                    }
                 }
 
                 if subjects.isEmpty {
@@ -194,64 +226,102 @@ struct VoiceQuizView: View {
                     ForEach(subjects) { subject in
                         GlassCard {
                             VStack(alignment: .leading, spacing: 14) {
-                                HStack(alignment: .top) {
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text(subject.name)
-                                            .bcHeadline()
-                                            .foregroundStyle(Color.textPrimary)
-                                        Text("\(subject.notes.count) notes • \(subject.notes.flatMap { $0.questions }.count) saved questions")
-                                            .bcCaption()
-                                            .foregroundStyle(Color.textTertiary)
+                                Button {
+                                    appState.startQuiz(for: subject)
+                                } label: {
+                                    HStack(alignment: .top, spacing: 12) {
+                                        VStack(alignment: .leading, spacing: 4) {
+                                            Text(subject.name)
+                                                .bcHeadline()
+                                                .foregroundStyle(Color.textPrimary)
+                                            Text("\(subject.notes.count) notes • \(subject.notes.flatMap { $0.questions }.count) saved questions")
+                                                .bcCaption()
+                                                .foregroundStyle(Color.textTertiary)
+                                            Text("Tap subject to quiz everything")
+                                                .font(.system(size: 12, weight: .medium))
+                                                .foregroundStyle(Color.textSecond)
+                                        }
+                                        Spacer()
+                                        Image(systemName: "brain.head.profile")
+                                            .foregroundStyle(Color.textSecond)
                                     }
-                                    Spacer()
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                }
+                                .buttonStyle(.plain)
+
+                                HStack(spacing: 10) {
                                     Button("Quiz All") {
                                         appState.startQuiz(for: subject)
+                                    }
+                                    .buttonStyle(BCGhostButtonStyle())
+
+                                    Button("Organize Topics") {
+                                        organizerSubject = subject
                                     }
                                     .buttonStyle(BCGhostButtonStyle())
                                 }
 
                                 ForEach(subject.notesByTopic, id: \.topic) { entry in
                                     VStack(alignment: .leading, spacing: 10) {
-                                        HStack {
-                                            VStack(alignment: .leading, spacing: 4) {
-                                                Text(entry.topic)
-                                                    .bcBody()
-                                                    .foregroundStyle(Color.textPrimary)
-                                                Text("\(entry.notes.count) note\(entry.notes.count == 1 ? "" : "s")")
-                                                    .bcCaption()
+                                        Button {
+                                            appState.startQuiz(for: subject, topicName: entry.topic)
+                                        } label: {
+                                            HStack(spacing: 12) {
+                                                VStack(alignment: .leading, spacing: 4) {
+                                                    Text(entry.topic)
+                                                        .bcBody()
+                                                        .foregroundStyle(Color.textPrimary)
+                                                    Text("\(entry.notes.count) note\(entry.notes.count == 1 ? "" : "s") • tap topic to quiz it")
+                                                        .bcCaption()
+                                                        .foregroundStyle(Color.textTertiary)
+                                                }
+                                                Spacer()
+                                                Image(systemName: "chevron.right")
+                                                    .font(.system(size: 12, weight: .medium))
                                                     .foregroundStyle(Color.textTertiary)
                                             }
-                                            Spacer()
-                                            Button("Quiz Topic") {
-                                                appState.startQuiz(for: subject, topicName: entry.topic)
-                                            }
-                                            .buttonStyle(BCGhostButtonStyle())
+                                            .frame(maxWidth: .infinity, alignment: .leading)
                                         }
+                                        .buttonStyle(.plain)
 
                                         VStack(alignment: .leading, spacing: 8) {
-                                            ForEach(entry.notes.prefix(3)) { note in
-                                                Button {
-                                                    appState.startQuiz(for: subject, topicName: entry.topic, noteIDs: [note.id])
-                                                } label: {
-                                                    VStack(alignment: .leading, spacing: 4) {
-                                                        Text(note.extractedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Untitled note" : String(note.extractedText.trimmingCharacters(in: .whitespacesAndNewlines).prefix(72)))
-                                                            .font(.system(size: 13, weight: .medium))
-                                                            .foregroundStyle(Color.textPrimary)
-                                                            .frame(maxWidth: .infinity, alignment: .leading)
-                                                            .lineLimit(2)
-                                                        Text(note.questions.isEmpty ? "Will generate live from this note" : "\(note.questions.count) saved question\(note.questions.count == 1 ? "" : "s")")
-                                                            .bcCaption()
-                                                            .foregroundStyle(Color.textTertiary)
+                                            ForEach(entry.notes.prefix(4)) { note in
+                                                HStack(spacing: 10) {
+                                                    Button {
+                                                        selectedLibraryNote = note
+                                                    } label: {
+                                                        VStack(alignment: .leading, spacing: 4) {
+                                                            Text(note.extractedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Untitled note" : String(note.extractedText.trimmingCharacters(in: .whitespacesAndNewlines).prefix(72)))
+                                                                .font(.system(size: 13, weight: .medium))
+                                                                .foregroundStyle(Color.textPrimary)
+                                                                .frame(maxWidth: .infinity, alignment: .leading)
+                                                                .lineLimit(2)
+                                                            Text(note.questions.isEmpty ? "Tap note to open • quiz builds live" : "Tap note to open • \(note.questions.count) saved question\(note.questions.count == 1 ? "" : "s")")
+                                                                .bcCaption()
+                                                                .foregroundStyle(Color.textTertiary)
+                                                        }
+                                                        .padding(.horizontal, 12)
+                                                        .padding(.vertical, 10)
+                                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                                        .background(Color.white.opacity(0.04), in: RoundedRectangle(cornerRadius: 10))
                                                     }
-                                                    .padding(.horizontal, 12)
-                                                    .padding(.vertical, 10)
-                                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                                    .background(Color.white.opacity(0.04), in: RoundedRectangle(cornerRadius: 10))
+                                                    .buttonStyle(.plain)
+
+                                                    Button {
+                                                        appState.startQuiz(for: subject, topicName: entry.topic, noteIDs: [note.id])
+                                                    } label: {
+                                                        Image(systemName: "play.fill")
+                                                            .font(.system(size: 12, weight: .bold))
+                                                            .foregroundStyle(Color.textPrimary)
+                                                            .frame(width: 34, height: 34)
+                                                            .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
+                                                    }
+                                                    .buttonStyle(.plain)
+                                                    .accessibilityLabel("Quiz this note")
                                                 }
-                                                .buttonStyle(.plain)
                                             }
-                                            if entry.notes.count > 3 {
-                                                Text("+ \(entry.notes.count - 3) more note\(entry.notes.count - 3 == 1 ? "" : "s") in \(entry.topic)")
+                                            if entry.notes.count > 4 {
+                                                Text("+ \(entry.notes.count - 4) more note\(entry.notes.count - 4 == 1 ? "" : "s") in \(entry.topic)")
                                                     .bcCaption()
                                                     .foregroundStyle(Color.textTertiary)
                                             }
@@ -265,7 +335,9 @@ struct VoiceQuizView: View {
                     }
                 }
             }
-            .padding(20)
+            .padding(.horizontal, 20)
+            .padding(.top, 8)
+            .padding(.bottom, 20)
         }
     }
 
@@ -382,10 +454,93 @@ struct VoiceQuizView: View {
 
             Button("End session") {
                 manager.stop()
+                appState.clearQuizSelection()
                 appState.selectedTab = .home
             }
             .buttonStyle(BCGhostButtonStyle())
             .padding(.bottom, BCSpacing.xl)
+        }
+    }
+}
+
+private struct TopicOrganizerSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let subject: Subject
+
+    @State private var pendingRenameTopic: String?
+    @State private var renameDraft: String = ""
+    @State private var editMode: EditMode = .active
+    @State private var refreshTick = 0
+
+    var body: some View {
+        NavigationStack {
+            List {
+                let topicEntries = {
+                    _ = refreshTick
+                    return subject.notesByTopic
+                }()
+                Section {
+                    ForEach(topicEntries, id: \.topic) { entry in
+                        HStack(spacing: 12) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(entry.topic)
+                                    .bcBody()
+                                    .foregroundStyle(Color.textPrimary)
+                                Text("\(entry.notes.count) note\(entry.notes.count == 1 ? "" : "s")")
+                                    .bcCaption()
+                                    .foregroundStyle(Color.textTertiary)
+                            }
+                            Spacer()
+                            Button("Rename") {
+                                pendingRenameTopic = entry.topic
+                                renameDraft = entry.topic == "Unsorted" ? "" : entry.topic
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(Color.textSecond)
+                        }
+                        .listRowBackground(Color.bgPrimary)
+                    }
+                    .onMove { fromOffsets, toOffset in
+                        subject.moveTopics(fromOffsets: fromOffsets, toOffset: toOffset)
+                        refreshTick += 1
+                    }
+                } header: {
+                    Text("Drag to reorder. Rename \"Unsorted\" when you finally know what the notes actually are.")
+                }
+            }
+            .scrollContentBackground(.hidden)
+            .background(Color.bgPrimary)
+            .environment(\.editMode, $editMode)
+            .navigationTitle(subject.name)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") { dismiss() }
+                        .foregroundStyle(Color.textSecond)
+                }
+            }
+            .alert("Rename Topic", isPresented: Binding(
+                get: { pendingRenameTopic != nil },
+                set: { if !$0 { pendingRenameTopic = nil } }
+            )) {
+                TextField("Topic name", text: $renameDraft)
+                    .textInputAutocapitalization(.words)
+                    .autocorrectionDisabled()
+                Button("Cancel", role: .cancel) {
+                    pendingRenameTopic = nil
+                    renameDraft = ""
+                }
+                Button("Save") {
+                    if let original = pendingRenameTopic {
+                        subject.renameTopic(from: original, to: renameDraft)
+                        refreshTick += 1
+                    }
+                    pendingRenameTopic = nil
+                    renameDraft = ""
+                }
+            } message: {
+                Text("This renames the topic across every note in \(subject.name).")
+            }
         }
     }
 }
