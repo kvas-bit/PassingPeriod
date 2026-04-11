@@ -100,7 +100,7 @@ struct NoteCardView: View {
 
 // MARK: - Note detail sheet
 
-private struct NoteDetailSheet: View {
+struct NoteDetailSheet: View {
     let note: Note
     let subjectName: String
 
