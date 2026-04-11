@@ -80,23 +80,45 @@ struct HomeView: View {
                 // MARK: Recent Notes
                 if !notes.isEmpty {
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("Recent Notes")
-                            .bcCaption()
-                            .foregroundStyle(Color.textSecond)
-                            .textCase(.uppercase)
+                        // Header row: label + count badge + See All button
+                        HStack(spacing: 8) {
+                            Text("RECENT NOTES · \(notes.count)")
+                                .bcCaption()
+                                .foregroundStyle(Color.textSecond)
+
+                            Spacer()
+
+                            Button {
+                                appState.selectedTab = .schedule
+                            } label: {
+                                HStack(spacing: 4) {
+                                    Text("See All")
+                                        .bcCaption()
+                                        .foregroundStyle(Color.textSecond)
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 10, weight: .medium))
+                                        .foregroundStyle(Color.textSecond)
+                                }
+                            }
+                            .buttonStyle(.plain)
+                        }
 
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack(spacing: 12) {
-                                ForEach(notes.prefix(10)) { note in
+                                ForEach(Array(notes.prefix(10).enumerated()), id: \.element.id) { index, note in
                                     NoteCardView(note: note, subjects: subjects)
+                                        .offset(y: appeared ? 0 : 20)
+                                        .opacity(appeared ? 1 : 0)
+                                        .animation(
+                                            .spring(response: 0.4, dampingFraction: 0.75)
+                                                .delay(Double(index) * 0.06),
+                                            value: appeared
+                                        )
                                 }
                             }
                             .padding(.horizontal, 1)
                         }
                     }
-                    .offset(y: appeared ? 0 : 20)
-                    .opacity(appeared ? 1 : 0)
-                    .animation(.spring(response: 0.4, dampingFraction: 0.75).delay(0.1), value: appeared)
                 }
 
                 // MARK: Quick Stats
