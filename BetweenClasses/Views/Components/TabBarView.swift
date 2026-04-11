@@ -16,16 +16,33 @@ struct TabBarView: View {
                 }
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.top, 10)
-        .padding(.bottom, 30)
-        .background(.ultraThinMaterial)
-        .background(Color.black.opacity(0.3))
-        .overlay(alignment: .top) {
-            Rectangle()
-                .frame(height: 0.5)
-                .foregroundStyle(Color.white.opacity(0.12))
+        .padding(.horizontal, 6)
+        .padding(.vertical, 10)
+        .background {
+            RoundedRectangle(cornerRadius: BCRadius.dock, style: .continuous)
+                .fill(.ultraThinMaterial)
+                .background {
+                    RoundedRectangle(cornerRadius: BCRadius.dock, style: .continuous)
+                        .fill(Color.bgElevated.opacity(0.88))
+                }
+                .overlay {
+                    RoundedRectangle(cornerRadius: BCRadius.dock, style: .continuous)
+                        .strokeBorder(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.16),
+                                    Color.white.opacity(0.04)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1
+                        )
+                }
+                .shadow(color: Color.black.opacity(0.55), radius: 28, x: 0, y: 14)
         }
+        .padding(.horizontal, BCSpacing.lg)
+        .padding(.bottom, 10)
     }
 }
 
@@ -38,7 +55,6 @@ private struct TabBarItem: View {
         Button(action: action) {
             VStack(spacing: 4) {
                 ZStack {
-                    // Pill glow behind selected icon
                     if isSelected {
                         RoundedRectangle(cornerRadius: 10)
                             .fill(Color.white.opacity(0.1))
@@ -62,7 +78,9 @@ private struct TabBarItem: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .animation(.spring(response: 0.22, dampingFraction: 0.68), value: isSelected)
+        .animation(BCMotion.microSpring, value: isSelected)
+        .accessibilityLabel(tab.label)
+        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
     }
 }
 

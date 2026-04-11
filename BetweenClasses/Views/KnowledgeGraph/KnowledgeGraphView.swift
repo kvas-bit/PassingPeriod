@@ -16,54 +16,41 @@ struct KnowledgeGraphView: View {
                 emptyState
             } else {
                 SCNViewWrapper(subjects: subjects, sceneRef: sceneRef, onTap: { node in
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                    withAnimation(BCMotion.panelSpring) {
                         selectedNode = node
                     }
                 })
                 .ignoresSafeArea()
                 .opacity(appeared ? 1 : 0)
-                .animation(.easeIn(duration: 0.6), value: appeared)
+                .animation(BCMotion.gentleEase, value: appeared)
             }
 
-            // Tooltip overlay
             if let node = selectedNode {
                 VStack {
                     Spacer()
                     nodeTooltip(node)
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 120)
+                        .padding(.horizontal, BCSpacing.gutter)
+                        .padding(.bottom, 96)
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
+                .animation(BCMotion.panelSpring, value: selectedNode?.id)
             }
-
-            // Title
-            VStack {
-                HStack {
-                    Text("Knowledge Graph")
-                        .bcCaption()
-                        .foregroundStyle(Color.textSecond)
-                        .textCase(.uppercase)
-                        .padding(.horizontal, 20)
-                        .padding(.top, 60)
-                    Spacer()
-                    if selectedNode != nil {
-                        Button("Clear") {
-                            withAnimation { selectedNode = nil }
-                        }
-                        .bcCaption()
-                        .foregroundStyle(Color.textSecond)
-                        .padding(.trailing, 20)
-                        .padding(.top, 60)
+        }
+        .safeAreaInset(edge: .top, spacing: BCSpacing.md) {
+            BCChromeBar(title: "Knowledge graph") {
+                if selectedNode != nil {
+                    Button("Clear") {
+                        withAnimation(BCMotion.panelSpring) { selectedNode = nil }
                     }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(Color.textSecond)
+                    .accessibilityLabel("Clear selection")
                 }
-                Spacer()
             }
+            .padding(.horizontal, BCSpacing.gutter)
         }
         .onAppear {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { appeared = true }
-        }
-        .onTapGesture {
-            if selectedNode != nil { withAnimation { selectedNode = nil } }
         }
     }
 
@@ -96,7 +83,7 @@ struct KnowledgeGraphView: View {
     private var emptyState: some View {
         VStack(spacing: 16) {
             Image(systemName: "circle.hexagongrid")
-                .font(.system(size: 48))
+                .font(.system(size: 48, weight: .thin))
                 .foregroundStyle(Color.textTertiary)
             Text("No data yet")
                 .bcHeadline()
@@ -135,12 +122,10 @@ struct SCNViewWrapper: UIViewRepresentable {
         let scene = GraphScene()
         let data = GraphDataBuilder.build(from: subjects)
         scene.build(from: data)
-        // Set scene background to match app dark background (default is white, causing the white blob)
         scene.background.contents = UIColor(red: 0.031, green: 0.035, blue: 0.039, alpha: 1)
         view.scene = scene
         sceneRef.scene = scene
 
-        // Camera
         let cameraNode = SCNNode()
         cameraNode.camera = SCNCamera()
         cameraNode.camera?.fieldOfView = 60
@@ -148,7 +133,6 @@ struct SCNViewWrapper: UIViewRepresentable {
         scene.rootNode.addChildNode(cameraNode)
         view.pointOfView = cameraNode
 
-        // Gestures
         let pan = UIPanGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handlePan))
         let pinch = UIPinchGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handlePinch))
         let tap = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleTap))

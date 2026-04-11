@@ -37,10 +37,13 @@ struct ClassRowView: View {
                 }
 
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 12))
-                    .foregroundStyle(Color.textTertiary)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(Color.textSecond.opacity(0.55))
             }
-            .padding(.vertical, 4)
+            .padding(.vertical, 14)
+            .padding(.horizontal, BCSpacing.lg)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .glassCard(cornerRadius: BCRadius.card)
         }
         .buttonStyle(.plain)
         .sheet(isPresented: $showDetail) {
@@ -106,13 +109,8 @@ private struct SubjectDetailSheet: View {
                             dismiss()
                         } label: {
                             Text("Start Quiz")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundStyle(.black)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 16)
-                                .background(Color.white, in: RoundedRectangle(cornerRadius: 14))
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(BCPrimaryButtonStyle())
                         .disabled(subject.notes.isEmpty)
                         .opacity(subject.notes.isEmpty ? 0.4 : 1)
                     }

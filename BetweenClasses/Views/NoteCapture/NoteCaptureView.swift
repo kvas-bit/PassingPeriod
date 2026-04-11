@@ -45,40 +45,42 @@ struct NoteCaptureView: View {
     }
 
     private var captureControls: some View {
-        HStack(spacing: 40) {
-            // Photo library fallback
+        HStack(spacing: 36) {
             Button {
                 showImagePicker = true
             } label: {
                 Image(systemName: "photo.on.rectangle")
-                    .font(.system(size: 24))
-                    .foregroundStyle(.white.opacity(0.7))
-                    .frame(width: 48, height: 48)
+                    .font(.system(size: 22, weight: .medium))
+                    .foregroundStyle(Color.textPrimary.opacity(0.85))
+                    .frame(width: 52, height: 52)
+                    .glassCard(cornerRadius: BCRadius.control)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Choose from library")
 
             Spacer()
 
-            // Shutter
             Button { captureRequested = true } label: {
-                Circle()
-                    .fill(Color.white)
-                    .frame(width: 68, height: 68)
-                    .overlay(
-                        Circle()
-                            .stroke(Color.white.opacity(0.3), lineWidth: 3)
-                            .frame(width: 80, height: 80)
-                    )
+                ZStack {
+                    Circle()
+                        .strokeBorder(Color.white.opacity(0.25), lineWidth: 2)
+                        .frame(width: 82, height: 82)
+                    Circle()
+                        .fill(Color.white)
+                        .frame(width: 66, height: 66)
+                        .shadow(color: Color.black.opacity(0.35), radius: 12, y: 6)
+                }
             }
             .buttonStyle(.plain)
             .disabled(isProcessing)
+            .accessibilityLabel("Capture note")
 
             Spacer()
 
-            Color.clear.frame(width: 48, height: 48)
+            Color.clear.frame(width: 52, height: 52)
         }
-        .padding(.horizontal, 40)
-        .padding(.bottom, 90)
+        .padding(.horizontal, BCSpacing.xxl)
+        .padding(.bottom, BCSpacing.xl)
     }
 
     private var processingOverlay: some View {
