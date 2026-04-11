@@ -42,6 +42,25 @@ struct CanvasConnectView: View {
                         secureField(label: "Gemini API key", placeholder: "AIza...", text: $geminiKey)
                         secureField(label: "ElevenLabs API key", placeholder: "sk_...", text: $elevenLabsKey)
 
+                        sectionHeader("Appearance", icon: "paintpalette")
+                        Toggle(isOn: Binding(
+                            get: { appState.colorCodingEnabled },
+                            set: { appState.setColorCodingEnabled($0) }
+                        )) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Subject color coding")
+                                    .bcBody()
+                                    .foregroundStyle(Color.textPrimary)
+                                Text("Adds soft subject/topic tints in quiz, schedule, graph, and notes. Turn it off for full monochrome.")
+                                    .bcCaption()
+                                    .foregroundStyle(Color.textTertiary)
+                            }
+                        }
+                        .tint(Color.white.opacity(0.9))
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 14)
+                        .glassCard(cornerRadius: 12)
+
                         if let err = error {
                             Text(err)
                                 .bcCaption()
