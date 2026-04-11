@@ -8,14 +8,16 @@ final class Subject {
     var instructor: String
     var colorHex: String
     var scheduleJSON: String
+    var canvasID: String
     @Relationship(deleteRule: .cascade) var notes: [Note]
 
-    init(name: String, instructor: String = "", colorHex: String = "#FFFFFF") {
+    init(name: String, instructor: String = "", colorHex: String = "#FFFFFF", canvasID: String = "") {
         self.id = UUID()
         self.name = name
         self.instructor = instructor
         self.colorHex = colorHex
         self.scheduleJSON = "[]"
+        self.canvasID = canvasID
         self.notes = []
     }
 
