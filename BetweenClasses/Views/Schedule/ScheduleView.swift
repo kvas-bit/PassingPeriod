@@ -8,6 +8,7 @@ struct ScheduleView: View {
     @State private var isRefreshing = false
     @State private var appeared = false
     @State private var showSettings = false
+    @State private var confirmDeleteAll = false
 
     var body: some View {
         NavigationStack {
@@ -23,16 +24,17 @@ struct ScheduleView: View {
                 }
             }
             .navigationTitle("Schedule")
-            .navigationBarTitleDisplayMode(.large)
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     if !subjects.isEmpty {
-                        Button(role: .destructive) {
-                            clearAll()
+                        Button {
+                            confirmDeleteAll = true
                         } label: {
                             Image(systemName: "trash")
-                                .foregroundStyle(.red.opacity(0.7))
+                                .foregroundStyle(Color.textSecond)
                         }
+                        .accessibilityLabel("Delete all classes")
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
@@ -47,9 +49,22 @@ struct ScheduleView: View {
                             )
                             .foregroundStyle(Color.textSecond)
                     }
+                    .accessibilityLabel("Refresh schedule")
                 }
             }
             .toolbarBackground(Color.bgPrimary, for: .navigationBar)
+            .confirmationDialog(
+                "Remove all synced classes from this device?",
+                isPresented: $confirmDeleteAll,
+                titleVisibility: .visible
+            ) {
+                Button("Delete all", role: .destructive) {
+                    clearAll()
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This does not delete your Canvas account. You can sync again later.")
+            }
         }
         .sheet(isPresented: $showSettings) {
             CanvasConnectView()
@@ -65,18 +80,21 @@ struct ScheduleView: View {
     }
 
     private var subjectList: some View {
-        List {
-            ForEach(subjects) { subject in
-                ClassRowView(subject: subject)
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
-                    .listRowInsets(EdgeInsets(top: 4, leading: 20, bottom: 4, trailing: 20))
-                    .offset(y: appeared ? 0 : 20)
-                    .opacity(appeared ? 1 : 0)
-                    .animation(.spring(response: 0.4, dampingFraction: 0.75), value: appeared)
+        ScrollView(showsIndicators: false) {
+            LazyVStack(spacing: BCSpacing.sm) {
+                ForEach(Array(subjects.enumerated()), id: \.element.id) { index, subject in
+                    ClassRowView(subject: subject)
+                        .offset(y: appeared ? 0 : 16)
+                        .opacity(appeared ? 1 : 0)
+                        .animation(
+                            BCMotion.panelSpring.delay(Double(index) * 0.04),
+                            value: appeared
+                        )
+                }
             }
+            .padding(.horizontal, BCSpacing.gutter)
+            .padding(.vertical, BCSpacing.md)
         }
-        .listStyle(.plain)
         .background(Color.bgPrimary)
         .refreshable { await refresh() }
     }
@@ -101,13 +119,9 @@ struct ScheduleView: View {
                 showSettings = true
             } label: {
                 Text("Connect")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(.black)
-                    .padding(.horizontal, 32)
-                    .padding(.vertical, 12)
-                    .background(Color.white, in: RoundedRectangle(cornerRadius: 12))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(BCPrimaryButtonStyle())
+            .padding(.horizontal, BCSpacing.xxl)
             .padding(.top, 4)
         }
     }
