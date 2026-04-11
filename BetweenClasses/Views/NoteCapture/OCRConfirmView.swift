@@ -22,6 +22,9 @@ struct OCRConfirmView: View {
     @State private var selectedExistingTopic: String = ""
     @State private var customTopicName: String = ""
     @State private var isSaving = false
+    @State private var isCleaningNotes = false
+    @State private var cleanupSummary: String?
+    @State private var cleanupError: String?
 
     init(imageData: Data,
          extractedText: String,
@@ -109,10 +112,44 @@ struct OCRConfirmView: View {
 
                         // Extracted text editor
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("Extracted Text")
-                                .bcCaption()
-                                .foregroundStyle(Color.textSecond)
-                                .textCase(.uppercase)
+                            HStack {
+                                Text("Extracted Text")
+                                    .bcCaption()
+                                    .foregroundStyle(Color.textSecond)
+                                    .textCase(.uppercase)
+                                Spacer()
+                                Button {
+                                    cleanUpNotes()
+                                } label: {
+                                    HStack(spacing: 6) {
+                                        if isCleaningNotes {
+                                            ProgressView()
+                                                .tint(Color.textSecond)
+                                                .scaleEffect(0.8)
+                                        } else {
+                                            Image(systemName: "wand.and.stars")
+                                                .font(.system(size: 12, weight: .semibold))
+                                        }
+                                        Text(isCleaningNotes ? "Cleaning…" : "Clean up notes")
+                                            .font(.system(size: 12, weight: .semibold))
+                                    }
+                                    .foregroundStyle(Color.textSecond)
+                                }
+                                .buttonStyle(.plain)
+                                .disabled(isCleaningNotes || editedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                            }
+
+                            if let cleanupSummary {
+                                Text(cleanupSummary)
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundStyle(Color.textTertiary)
+                            }
+
+                            if let cleanupError {
+                                Text(cleanupError)
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundStyle(.red.opacity(0.85))
+                            }
 
                             TextEditor(text: $editedText)
                                 .bcBody()
@@ -294,6 +331,33 @@ struct OCRConfirmView: View {
         .onChange(of: selectedSubject?.id) { _, _ in
             selectedExistingTopic = selectedSubject?.topicNames.first ?? ""
             customTopicName = ""
+        }
+    }
+
+    // MARK: - Cleanup
+
+    private func cleanUpNotes() {
+        let current = editedText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !current.isEmpty, !isCleaningNotes else { return }
+
+        cleanupError = nil
+        cleanupSummary = nil
+        isCleaningNotes = true
+
+        Task {
+            do {
+                let result = try await GeminiService.cleanupNotes(currentText: current, imageData: imageData)
+                await MainActor.run {
+                    editedText = result.cleanedText
+                    cleanupSummary = result.changeSummary ?? "Cleaned spacing, OCR glitches, and formatting without changing meaning."
+                    isCleaningNotes = false
+                }
+            } catch {
+                await MainActor.run {
+                    cleanupError = "Couldn’t clean up notes right now."
+                    isCleaningNotes = false
+                }
+            }
         }
     }
 
