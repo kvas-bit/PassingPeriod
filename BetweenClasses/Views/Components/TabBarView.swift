@@ -16,16 +16,16 @@ struct TabBarView: View {
                 }
             }
         }
-        .padding(.horizontal, 8)
-        .padding(.top, 12)
-        .padding(.bottom, 28)
+        .padding(.horizontal, 12)
+        .padding(.top, 10)
+        .padding(.bottom, 30)
         .background(.ultraThinMaterial)
-        .overlay(
+        .background(Color.black.opacity(0.3))
+        .overlay(alignment: .top) {
             Rectangle()
-                .frame(height: 1)
-                .foregroundStyle(Color.glassStroke),
-            alignment: .top
-        )
+                .frame(height: 0.5)
+                .foregroundStyle(Color.white.opacity(0.12))
+        }
     }
 }
 
@@ -36,20 +36,33 @@ private struct TabBarItem: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 5) {
-                Image(systemName: tab.icon)
-                    .font(.system(size: 20, weight: isSelected ? .semibold : .regular))
-                    .foregroundStyle(isSelected ? .white : .white.opacity(0.35))
+            VStack(spacing: 4) {
+                ZStack {
+                    // Pill glow behind selected icon
+                    if isSelected {
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(Color.white.opacity(0.1))
+                            .frame(width: 44, height: 28)
+                            .blur(radius: 4)
+                    }
+
+                    Image(systemName: tab.icon)
+                        .font(.system(size: 19, weight: isSelected ? .semibold : .regular))
+                        .foregroundStyle(isSelected ? .white : .white.opacity(0.4))
+                        .scaleEffect(isSelected ? 1.05 : 1.0)
+                }
+                .frame(height: 28)
 
                 Text(tab.label)
-                    .bcCaption()
-                    .foregroundStyle(isSelected ? .white : .white.opacity(0.35))
+                    .font(.system(size: 10, weight: isSelected ? .semibold : .regular))
+                    .foregroundStyle(isSelected ? .white : .white.opacity(0.4))
+                    .tracking(0.2)
             }
             .frame(maxWidth: .infinity)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .animation(.spring(response: 0.25, dampingFraction: 0.7), value: isSelected)
+        .animation(.spring(response: 0.22, dampingFraction: 0.68), value: isSelected)
     }
 }
 
