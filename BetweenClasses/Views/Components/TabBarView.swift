@@ -55,7 +55,6 @@ private struct TabBarItem: View {
         Button(action: action) {
             VStack(spacing: 4) {
                 ZStack {
-                    // Pill glow behind selected icon
                     if isSelected {
                         RoundedRectangle(cornerRadius: 10)
                             .fill(Color.white.opacity(0.1))

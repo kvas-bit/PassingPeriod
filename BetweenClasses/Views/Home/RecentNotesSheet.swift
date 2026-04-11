@@ -15,7 +15,7 @@ struct RecentNotesSheet: View {
                     LazyVStack(spacing: BCSpacing.md) {
                         ForEach(notes) { note in
                             NoteCardView(note: note, subjects: subjects)
-                                .frame(maxWidth: .infinity)
+                                .frame(maxWidth: .infinity, alignment: .leading)
                         }
                     }
                     .padding(.horizontal, BCSpacing.gutter)
