@@ -98,8 +98,10 @@ enum GraphDataBuilder {
                 edges.append(GraphEdge(fromID: subject.id, toID: note.id))
             }
 
-            for idx in 0..<(sortedNotes.count - 1) {
-                edges.append(GraphEdge(fromID: sortedNotes[idx].id, toID: sortedNotes[idx + 1].id))
+            if sortedNotes.count >= 2 {
+                for idx in 0..<(sortedNotes.count - 1) {
+                    edges.append(GraphEdge(fromID: sortedNotes[idx].id, toID: sortedNotes[idx + 1].id))
+                }
             }
         }
 
