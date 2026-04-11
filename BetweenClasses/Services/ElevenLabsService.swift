@@ -19,7 +19,7 @@ final class ElevenLabsService: NSObject {
     }
 
     func speak(_ text: String) async throws {
-        guard !apiKey.isEmpty else { throw ElevenLabsError.noAPIKey }
+        guard !apiKey.isEmpty else { throw ElevenLabsError.notConfigured }
 
         let url = URL(string: "\(endpoint)/\(voiceID)")!
         var req = URLRequest(url: url)
@@ -37,7 +37,7 @@ final class ElevenLabsService: NSObject {
 
         let (data, response) = try await URLSession.shared.data(for: req)
         guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
-            throw ElevenLabsError.httpError
+            throw ElevenLabsError.httpError(statusCode: (response as? HTTPURLResponse)?.statusCode ?? -1)
         }
 
         try await playAudio(data: data)
@@ -61,6 +61,9 @@ final class ElevenLabsService: NSObject {
         await withCheckedContinuation { continuation in
             self.onFinish = { continuation.resume() }
         }
+
+        // Deactivate playback session so SpeechService can take over recording
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
 
     private var onFinish: (() -> Void)?
@@ -83,6 +86,8 @@ final class ElevenLabsService: NSObject {
         displayLink?.invalidate()
         isSpeaking = false
         amplitude = 0
+        onFinish = nil
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
 }
 
@@ -99,12 +104,18 @@ extension ElevenLabsService: AVAudioPlayerDelegate {
 }
 
 enum ElevenLabsError: Error, LocalizedError {
-    case noAPIKey, httpError
+    case notConfigured
+    case httpError(statusCode: Int)
+    case playbackError
 
     var errorDescription: String? {
         switch self {
-        case .noAPIKey:  return "ElevenLabs API key not set."
-        case .httpError: return "ElevenLabs request failed."
+        case .notConfigured:
+            return "ElevenLabs API key not configured. Add it in Settings."
+        case .httpError(let code):
+            return "ElevenLabs request failed (HTTP \(code))."
+        case .playbackError:
+            return "Audio playback failed."
         }
     }
 }
