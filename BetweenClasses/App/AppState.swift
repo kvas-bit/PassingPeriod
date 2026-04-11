@@ -18,8 +18,8 @@ enum AppTab: Int, CaseIterable {
         switch self {
         case .home:     return "house.fill"
         case .capture:  return "camera.fill"
-        case .quiz:     return "waveform"
-        case .schedule: return "calendar"
+        case .quiz:     return "brain.head.profile"
+        case .schedule: return "calendar.badge.clock"
         case .graph:    return "circle.hexagongrid.fill"
         }
     }
@@ -29,13 +29,17 @@ enum AppTab: Int, CaseIterable {
 final class AppState {
     var isOnboarded: Bool
     var selectedTab: AppTab = .home
+    var colorCodingEnabled: Bool
     var quizSubject: Subject?
+    var quizTopicName: String?
+    var quizNoteIDs: [UUID] = []
     var showQuiz: Bool = false
     var quizStreak: Int
     var sessionsToday: Int
 
     init() {
         self.isOnboarded = UserDefaults.standard.bool(forKey: "bc_onboarded")
+        self.colorCodingEnabled = UserDefaults.standard.object(forKey: "bc_color_coding_enabled") as? Bool ?? true
         self.quizStreak = UserDefaults.standard.integer(forKey: "bc_streak")
         self.sessionsToday = UserDefaults.standard.integer(forKey: "bc_sessions_today")
     }
@@ -50,9 +54,24 @@ final class AppState {
         UserDefaults.standard.set(sessionsToday, forKey: "bc_sessions_today")
     }
 
-    func startQuiz(for subject: Subject) {
+    func setColorCodingEnabled(_ enabled: Bool) {
+        colorCodingEnabled = enabled
+        UserDefaults.standard.set(enabled, forKey: "bc_color_coding_enabled")
+    }
+
+    func startQuiz(for subject: Subject, topicName: String? = nil, noteIDs: [UUID] = []) {
         quizSubject = subject
+        quizTopicName = topicName
+        quizNoteIDs = noteIDs
         showQuiz = true
         selectedTab = .quiz
     }
+
+    func clearQuizSelection() {
+        quizSubject = nil
+        quizTopicName = nil
+        quizNoteIDs = []
+        showQuiz = false
+    }
 }
+

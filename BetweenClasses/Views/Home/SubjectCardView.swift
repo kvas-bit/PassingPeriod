@@ -4,6 +4,11 @@ struct SubjectCardView: View {
     let subject: Subject
     @Environment(AppState.self) private var appState
 
+    private var subjectAccent: Color {
+        _ = appState.colorCodingEnabled
+        return subject.displayColor
+    }
+
     var body: some View {
         Button {
             appState.startQuiz(for: subject)
@@ -12,7 +17,7 @@ struct SubjectCardView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
                         Circle()
-                            .fill(Color(hex: subject.colorHex))
+                            .fill(subjectAccent)
                             .frame(width: 8, height: 8)
                         Text(subject.name)
                             .bcBody()
@@ -30,6 +35,10 @@ struct SubjectCardView: View {
                     }
                 }
             }
+            .overlay(
+                RoundedRectangle(cornerRadius: BCRadius.card, style: .continuous)
+                    .stroke(subjectAccent.opacity(0.22), lineWidth: 1)
+            )
         }
         .buttonStyle(PressButtonStyle())
         .accessibilityLabel("Start quiz for \(subject.name)")

@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Crystal Morph v4</title>
+<script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: #08090a; color: #fff;
+  font-family: -apple-system, 'Inter', sans-serif;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 28px 24px 64px; min-height: 100vh;
+}
+h2 { font-size: 20px; font-weight: 700; letter-spacing: -0.4px; margin-bottom: 5px; }
+.sub { color: rgba(255,255,255,0.38); font-size: 13px; margin-bottom: 24px; text-align: center; line-height: 1.5; }
+
+.phone {
+  width: 268px; height: 548px; background: #08090a;
+  border-radius: 44px; border: 1px solid rgba(255,255,255,0.1);
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.04), inset 0 1px 0 rgba(255,255,255,0.14), 0 60px 120px rgba(0,0,0,0.9);
+  overflow: hidden; position: relative; flex-shrink: 0;
+}
+.bg {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 70% 50% at 50% 18%, rgba(180,195,255,0.05) 0%, transparent 62%),
+    radial-gradient(ellipse 45% 35% at 82% 82%, rgba(210,175,255,0.035) 0%, transparent 55%),
+    radial-gradient(ellipse 38% 30% at 14% 62%, rgba(175,255,215,0.03) 0%, transparent 50%);
+}
+.top-bar {
+  position: absolute; top: 0; left: 0; right: 0;
+  padding: 17px 20px 13px;
+  display: flex; justify-content: space-between; align-items: center; z-index: 20;
+}
+.subj { font-size: 9px; letter-spacing: 2px; color: rgba(255,255,255,0.25); font-weight: 500; }
+.qbadge { font-size: 9px; color: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.09); padding: 2px 8px; border-radius: 100px; letter-spacing: 0.5px; }
+.irid {
+  position: absolute; left: 0; right: 0; height: 1px; z-index: 20;
+  background: linear-gradient(90deg, transparent, rgba(185,205,255,0.28) 25%, rgba(215,185,255,0.2) 50%, rgba(185,255,215,0.26) 75%, transparent);
+  animation: flow 6s linear infinite; background-size: 200% 100%;
+}
+@keyframes flow { to { background-position: 200% 0; } }
+.irid-top { top: 50px; }
+.irid-bot { bottom: 48px; }
+.qtext {
+  position: absolute; top: 62px; left: 0; right: 0;
+  padding: 14px 22px 0;
+  font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.82);
+  text-align: center; line-height: 1.55; z-index: 20; min-height: 60px;
+  transition: opacity 0.3s;
+}
+#cc { position: absolute; top: 132px; left: 14px; right: 14px; height: 220px; z-index: 10; }
+#cc canvas { width: 100% !important; height: 100% !important; }
+.slabel {
+  position: absolute; top: 356px; left: 0; right: 0;
+  font-size: 8px; letter-spacing: 2px; color: rgba(255,255,255,0.14);
+  text-align: center; z-index: 20; font-weight: 500;
+}
+.waveform {
+  position: absolute; bottom: 96px; left: 0; right: 0;
+  display: flex; align-items: center; justify-content: center;
+  gap: 2.5px; height: 30px; z-index: 20;
+}
+.wb { width: 2.5px; border-radius: 100px; background: linear-gradient(180deg, rgba(185,205,255,0.85), rgba(185,255,215,0.5)); transform-origin: center; }
+.chip {
+  position: absolute; bottom: 64px; left: 0; right: 0;
+  display: flex; justify-content: center; z-index: 20;
+}
+.chip span {
+  font-size: 8.5px; letter-spacing: 2.5px; color: rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+  border-top-color: rgba(255,255,255,0.18); padding: 5px 14px; border-radius: 100px;
+}
+.endbtn {
+  position: absolute; bottom: 18px; left: 0; right: 0;
+  display: flex; justify-content: center; z-index: 20;
+}
+.endbtn span { font-size: 10px; color: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.07); border-radius: 100px; padding: 5px 18px; }
+
+.ctrl { margin-top: 24px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.cbtn {
+  font-size: 11px; font-weight: 500; color: rgba(255,255,255,0.38);
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.09);
+  border-radius: 100px; padding: 8px 16px; cursor: pointer; transition: all 0.2s;
+}
+.cbtn:hover { background: rgba(255,255,255,0.09); color: rgba(255,255,255,0.65); }
+.cbtn.on { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.32); color: #fff; }
+.hint { font-size: 11px; color: rgba(255,255,255,0.2); text-align: center; margin-top: 10px; letter-spacing: 0.3px; }
+</style>
+</head>
+<body>
+<h2>Geometric Crystal · Liquid Morph v4</h2>
+<p class="sub">Shapes land clean and geometric. Transitions are pure liquid.</p>
+
+<div class="phone">
+  <div class="bg"></div>
+  <div class="top-bar"><div class="subj">PHYSICS 101</div><div class="qbadge">Q 2 / 5</div></div>
+  <div class="irid irid-top"></div>
+  <div class="qtext" id="qtext">What are Newton's three laws of motion?</div>
+  <div id="cc"></div>
+  <div class="slabel" id="slabel">CUBE</div>
+  <div class="waveform" id="wf">
+    <div class="wb" style="height:5px"></div><div class="wb" style="height:9px"></div>
+    <div class="wb" style="height:16px"></div><div class="wb" style="height:24px"></div>
+    <div class="wb" style="height:28px"></div><div class="wb" style="height:22px"></div>
+    <div class="wb" style="height:18px"></div><div class="wb" style="height:13px"></div>
+    <div class="wb" style="height:8px"></div><div class="wb" style="height:20px"></div>
+    <div class="wb" style="height:26px"></div><div class="wb" style="height:18px"></div>
+    <div class="wb" style="height:7px"></div>
+  </div>
+  <div class="chip"><span id="chip">LISTENING</span></div>
+  <div class="irid irid-bot"></div>
+  <div class="endbtn"><span>End session</span></div>
+</div>
+
+<div class="ctrl">
+  <button class="cbtn on"  onclick="setState('listening',this)">Listening</button>
+  <button class="cbtn"     onclick="setState('speaking',this)">AI Speaking</button>
+  <button class="cbtn"     onclick="setState('evaluating',this)">Evaluating</button>
+  <button class="cbtn"     onclick="setState('correct',this)">Correct!</button>
+</div>
+<div class="hint">← tap states · watch transitions go full liquid</div>
+
+<script>
+// ─── Renderer ───────────────────────────────────────────────
+const cont = document.getElementById('cc');
+const W = cont.offsetWidth || 240, H = 220;
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setSize(W, H);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+cont.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const cam = new THREE.PerspectiveCamera(38, W/H, 0.1, 100);
+cam.position.set(0, 0, 4.0);
+
+// ─── Lighting ───────────────────────────────────────────────
+scene.add(new THREE.AmbientLight(0x10121a, 2.0));
+
+const key = new THREE.DirectionalLight(0xffffff, 3.5);
+key.position.set(2, 4, 3); scene.add(key);
+
+// Four iridescent rims — give spectral shimmer without accent color
+[[0xa8c0ff, [-2.5, 0.5, -1.5], 1.6],
+ [0xd0a8ff, [ 2.5,-1.5, -2.0], 1.2],
+ [0xa8ffd4, [-1.0, 2.5, -2.5], 1.3],
+ [0xfff5cc, [ 2.0, 2.0,  1.5], 0.8]
+].forEach(([col, pos, int]) => {
+  const l = new THREE.DirectionalLight(col, int);
+  l.position.set(...pos); scene.add(l);
+});
+
+scene.add(Object.assign(new THREE.DirectionalLight(0x7080a0, 0.6), {position: new THREE.Vector3(0,-3,1)}));
+
+// ─── Base geometry: IcosahedronGeometry detail=2 ────────────
+// 320 faces — enough resolution for clean shape surfaces
+// flatShading makes every face a distinct lit polygon
+const baseGeo = new THREE.IcosahedronGeometry(1, 2);
+// To non-indexed so each triangle has independent normals for flat shading
+const geo = baseGeo.toNonIndexed();
+
+const nBuf = geo.attributes.position.count; // 960
+const pos  = geo.attributes.position.array;
+
+// Save unit-direction of every buffer vertex
+const DIR = new Float32Array(nBuf * 3);
+for (let i = 0; i < nBuf; i++) {
+  const x = pos[i*3], y = pos[i*3+1], z = pos[i*3+2];
+  const r = Math.sqrt(x*x + y*y + z*z) || 1;
+  DIR[i*3]=x/r; DIR[i*3+1]=y/r; DIR[i*3+2]=z/r;
+}
+
+// ─── Material: lighter grey, flat-shaded, iridescent ────────
+const mat = new THREE.MeshPhysicalMaterial({
+  color:           new THREE.Color(0x22242e), // lighter grey — shapes readable
+  roughness:       0.06,
+  metalness:       0.28,
+  iridescence:     1.0,
+  iridescenceIOR:  2.2,
+  iridescenceThicknessRange: [80, 900],
+  flatShading:     true,  // each face = distinct shaded polygon
+  side:            THREE.FrontSide,
+});
+
+const mesh = new THREE.Mesh(geo, mat);
+scene.add(mesh);
+
+// Very thin wireframe overlay to reinforce clean edges
+const wf = new THREE.Mesh(
+  new THREE.IcosahedronGeometry(1, 2), // indexed = cleaner lines
+  new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true, transparent: true, opacity: 0.045 })
+);
+scene.add(wf);
+
+// ─── Shape functions ─────────────────────────────────────────
+// Each takes unit direction (nx,ny,nz) → radius scalar
+// These produce hard geometric surfaces when projected
+
+// N-gon prism helper: returns scale for a prism with n-sided cross-section
+function prismR(nx, ny, nz, n, halfH) {
+  const rXZ = Math.sqrt(nx*nx + nz*nz) || 1e-6;
+  const phi  = Math.atan2(nz, nx);
+  const sec  = (2*Math.PI) / n;
+  // Angle within current sector, normalised to [0, sector]
+  const ang  = ((phi % sec) + sec) % sec;
+  // Distance from center to edge of regular n-gon at angle ang
+  const faceR = Math.cos(Math.PI/n) / Math.cos(ang - Math.PI/n);
+  // Which surface wins: cap or side?
+  const sideFrac = rXZ / faceR;     // how far we are toward side (1 = on side)
+  const capFrac  = Math.abs(ny) / halfH; // how far toward cap
+  return capFrac > sideFrac
+    ? halfH / Math.abs(ny)   // on cap
+    : faceR / rXZ;           // on side
+}
+
+const S = {
+  cube:     (nx,ny,nz) => prismR(nx,ny,nz, 4, 0.80) * 0.82,
+  prism:    (nx,ny,nz) => prismR(nx,ny,nz, 3, 0.80) * 0.88,
+  sphere:   ()         => 1.0,
+  cylinder: (nx,ny,nz) => {
+    // Cylinder: circular cross-section (N→∞ prism), flat caps
+    const rXZ = Math.sqrt(nx*nx + nz*nz) || 1e-6;
+    const h   = 0.72;
+    return Math.abs(ny)/h > rXZ ? h/Math.abs(ny) : 1/rXZ;
+  },
+  pentagon: (nx,ny,nz) => prismR(nx,ny,nz, 5, 0.70) * 0.88,
+  octagon:  (nx,ny,nz) => prismR(nx,ny,nz, 8, 0.65) * 0.90,
+  star: (nx,ny,nz) => {
+    const rXZ = Math.sqrt(nx*nx + nz*nz) || 1e-6;
+    const phi  = Math.atan2(nz, nx);
+    const pts  = 5;
+    const sec  = Math.PI / pts;          // half-sector
+    const ang  = ((phi % (2*sec)) + 2*sec) % (2*sec);
+    const t    = Math.abs(ang - sec) / sec; // 0=valley 1=tip
+    const R    = 0.42 + 0.62 * Math.pow(t, 0.7);
+    const h    = 0.55;
+    return Math.abs(ny)/h > rXZ/R ? h/Math.abs(ny) : R/rXZ;
+  },
+};
+
+// Pre-compute target vertex positions for every shape
+const T = {};
+for (const [name, fn] of Object.entries(S)) {
+  const arr = new Float32Array(nBuf*3);
+  for (let i = 0; i < nBuf; i++) {
+    const nx=DIR[i*3], ny=DIR[i*3+1], nz=DIR[i*3+2];
+    const r = Math.max(0.1, fn(nx, ny, nz));
+    arr[i*3]=nx*r; arr[i*3+1]=ny*r; arr[i*3+2]=nz*r;
+  }
+  T[name] = arr;
+}
+
+// ─── Morph state ─────────────────────────────────────────────
+let fromPos = T.cube.slice();
+let toPos   = T.cube.slice();
+let morphT  = 1.0, morphMs = 1100, morphStart = 0;
+
+// PURE LIQUID transition: high-amplitude turbulent displacement
+// that follows a sin(t*π) envelope — zero at endpoints, peak mid-transit
+const LIQ_AMP = 0.72;  // large amplitude so it looks genuinely liquid
+
+function liquid(nx, ny, nz, t) {
+  // Multi-octave sinusoidal "noise" — gives organic mercury feel
+  return (
+    Math.sin(nx*5.1 + t*2.3) * 0.30 +
+    Math.sin(ny*4.3 + t*1.8 + nz*2.1) * 0.25 +
+    Math.sin(nz*6.2 + t*3.1 + nx*1.4) * 0.20 +
+    Math.sin((nx+ny)*3.7 + t*2.6) * 0.15 +
+    Math.sin((ny+nz)*2.9 + t*1.5 + nx*3.2) * 0.10
+  );
+}
+
+function startMorph(name, ms=1100) {
+  // Freeze current rendered positions as start
+  fromPos = new Float32Array(pos);
+  toPos   = T[name];
+  morphT  = 0; morphMs = ms; morphStart = performance.now();
+  document.getElementById('slabel').textContent = name.toUpperCase();
+}
+
+function ease(t) {
+  // Cubic ease-in-out: snappy departure, smooth arrival
+  return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2,3)/2;
+}
+
+// ─── State cycling ───────────────────────────────────────────
+const CYCLES = {
+  listening:  ['cube','prism'],
+  speaking:   ['sphere','cylinder'],
+  evaluating: ['pentagon','octagon'],
+};
+let cycleState = null, cycleIdx = 0, autoTimer;
+
+function nextCycle() {
+  if (!cycleState || !CYCLES[cycleState]) return;
+  const pair = CYCLES[cycleState];
+  cycleIdx = (cycleIdx + 1) % pair.length;
+  startMorph(pair[cycleIdx]);
+  autoTimer = setTimeout(nextCycle, 2600 + Math.random()*800);
+}
+
+// ─── Render loop ─────────────────────────────────────────────
+function animate(now) {
+  requestAnimationFrame(animate);
+  const t = now * 0.001;
+
+  if (morphT < 1) morphT = Math.min((now - morphStart) / morphMs, 1.0);
+
+  const te  = ease(morphT);
+  // Liquid envelope: sin curve peaks exactly at mid-morph
+  const env = LIQ_AMP * Math.sin(morphT * Math.PI);
+
+  for (let i = 0; i < nBuf; i++) {
+    const nx=DIR[i*3], ny=DIR[i*3+1], nz=DIR[i*3+2];
+    // Lerp between shapes
+    let x = fromPos[i*3]   + (toPos[i*3]   - fromPos[i*3])   * te;
+    let y = fromPos[i*3+1] + (toPos[i*3+1] - fromPos[i*3+1]) * te;
+    let z = fromPos[i*3+2] + (toPos[i*3+2] - fromPos[i*3+2]) * te;
+    // Liquid displacement along vertex direction — pure inward/outward
+    if (env > 0.005) {
+      const d = env * liquid(nx, ny, nz, t);
+      x += nx*d; y += ny*d; z += nz*d;
+    }
+    pos[i*3]=x; pos[i*3+1]=y; pos[i*3+2]=z;
+  }
+
+  geo.attributes.position.needsUpdate = true;
+  geo.computeVertexNormals();
+
+  // Idle breathe (barely perceptible — just enough to feel alive)
+  const br = 1 + 0.006 * Math.sin(t*0.8);
+  mesh.scale.setScalar(br); wf.scale.setScalar(br);
+
+  // Slow rotation
+  mesh.rotation.y = t*0.22;
+  mesh.rotation.x = Math.sin(t*0.13)*0.10;
+  wf.rotation.copy(mesh.rotation);
+
+  renderer.render(scene, cam);
+  animateWave(now);
+}
+requestAnimationFrame(animate);
+
+// ─── Waveform ────────────────────────────────────────────────
+const bars = document.querySelectorAll('.wb');
+let waveOn = true;
+function animateWave(now) {
+  bars.forEach((b,i) => {
+    if (!waveOn) { b.style.transform='scaleY(0.18)'; b.style.opacity='0.18'; return; }
+    const s = 0.25 + 0.75*(0.5 + 0.5*Math.sin(now/780 + i*0.44));
+    b.style.transform=`scaleY(${s.toFixed(3)})`;
+    b.style.opacity=(0.28+0.72*s).toFixed(3);
+  });
+}
+
+// ─── State switching ─────────────────────────────────────────
+const CFG = {
+  listening:  { pair:['cube','prism'],      label:'LISTENING',   wave:true,  q:"What are Newton's three laws of motion?" },
+  speaking:   { pair:['sphere','cylinder'], label:'AI SPEAKING', wave:true,  q:"Great start — the first law is inertia. Can you name the second?" },
+  evaluating: { pair:['pentagon','octagon'],label:'EVALUATING',  wave:false, q:"Evaluating your answer…" },
+  correct:    { pair:['star'],              label:'CORRECT',     wave:false, q:"Excellent! 3/3 correct — your best session yet." },
+};
+
+function setState(key, btn) {
+  const cfg = CFG[key];
+  document.getElementById('chip').textContent  = cfg.label;
+  document.getElementById('qtext').textContent = cfg.q;
+  waveOn = cfg.wave;
+  document.querySelectorAll('.cbtn').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  clearTimeout(autoTimer);
+  cycleState = key;
+  cycleIdx = 0;
+  startMorph(cfg.pair[0], key==='correct' ? 580 : 1100);
+  if (cfg.pair.length > 1) autoTimer = setTimeout(nextCycle, 2600);
+}
+
+// Init
+cycleState = 'listening';
+startMorph('cube', 1);
+autoTimer = setTimeout(nextCycle, 2800);
+</script>
+</body>
+</html>

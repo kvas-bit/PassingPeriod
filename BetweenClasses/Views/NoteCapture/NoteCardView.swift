@@ -15,11 +15,16 @@ struct PressButtonStyle: ButtonStyle {
 struct NoteCardView: View {
     let note: Note
     let subjects: [Subject]
+    @Environment(AppState.self) private var appState
 
     @State private var showDetail = false
 
     private var subjectName: String {
         subjects.first { $0.id == note.subjectID }?.name ?? "Unknown"
+    }
+
+    private var subject: Subject? {
+        subjects.first { $0.id == note.subjectID }
     }
 
     private var relativeTime: String {
@@ -31,6 +36,26 @@ struct NoteCardView: View {
         if hours   < 24 { return "\(hours)h ago" }
         if days    == 1 { return "Yesterday" }
         return "\(days)d ago"
+    }
+
+    private var topicName: String {
+        let trimmed = note.topicName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "Unsorted" : trimmed
+    }
+
+    private var subjectAccent: Color {
+        _ = appState.colorCodingEnabled
+        return subject?.displayColor ?? Color.textPrimary
+    }
+
+    private var topicAccent: Color {
+        _ = appState.colorCodingEnabled
+        return subject?.topicColor(for: topicName) ?? Color.textTertiary
+    }
+
+    private var noteAccent: Color {
+        _ = appState.colorCodingEnabled
+        return subject?.noteColor(for: topicName) ?? Color.white
     }
 
     private var questionBadge: String {
@@ -48,11 +73,17 @@ struct NoteCardView: View {
             VStack(alignment: .leading, spacing: 8) {
 
                 // Subject + time row
-                HStack {
-                    Text(subjectName)
-                        .bcCaption()
-                        .foregroundStyle(Color.textPrimary)
-                        .lineLimit(1)
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(subjectName)
+                            .bcCaption()
+                            .foregroundStyle(subjectAccent)
+                            .lineLimit(1)
+                        Text(topicName)
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(topicAccent)
+                            .lineLimit(1)
+                    }
                     Spacer()
                     Text(relativeTime)
                         .bcCaption()
@@ -84,12 +115,16 @@ struct NoteCardView: View {
                         Capsule()
                             .fill(note.questions.isEmpty
                                   ? Color.white.opacity(0.05)
-                                  : Color.white.opacity(0.12))
+                                  : noteAccent.opacity(0.24))
                     )
             }
             .padding(12)
             .frame(minWidth: 160, minHeight: 100, alignment: .topLeading)
             .glassCard(cornerRadius: BCRadius.card)
+            .overlay(
+                RoundedRectangle(cornerRadius: BCRadius.card, style: .continuous)
+                    .stroke(topicAccent.opacity(0.18), lineWidth: 1)
+            )
         }
         .buttonStyle(PressButtonStyle())
         .sheet(isPresented: $showDetail) {
@@ -100,7 +135,7 @@ struct NoteCardView: View {
 
 // MARK: - Note detail sheet
 
-private struct NoteDetailSheet: View {
+struct NoteDetailSheet: View {
     let note: Note
     let subjectName: String
 
@@ -124,6 +159,20 @@ private struct NoteDetailSheet: View {
                                     RoundedRectangle(cornerRadius: 12)
                                         .stroke(Color.glassStroke, lineWidth: 1)
                                 )
+                        }
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Topic")
+                                .bcCaption()
+                                .foregroundStyle(Color.textSecond)
+                                .textCase(.uppercase)
+
+                            Text(note.topicName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Unsorted" : note.topicName)
+                                .bcBody()
+                                .foregroundStyle(Color.textPrimary)
+                                .padding(16)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .glassCard()
                         }
 
                         // Full note text

@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Accent Color Direction</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #08090a;
+    color: #fff;
+    font-family: -apple-system, 'Inter', sans-serif;
+    padding: 32px 24px 60px;
+    min-height: 100vh;
+  }
+  h2 { font-size: 22px; font-weight: 700; letter-spacing: -0.4px; margin-bottom: 6px; }
+  .subtitle { color: rgba(255,255,255,0.45); font-size: 14px; margin-bottom: 32px; line-height: 1.5; }
+
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
+  }
+  .card {
+    background: #0f1011;
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 20px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .card:hover { border-color: rgba(255,255,255,0.15); transform: translateY(-2px); }
+  .card.selected { border-width: 2px; }
+
+  .card-preview {
+    height: 200px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    gap: 16px;
+  }
+
+  /* OPTION A — Electric Blue (Arc/Linear style) */
+  .preview-a { background: #08090a; }
+  .preview-a .glow {
+    width: 90px; height: 90px; border-radius: 50%;
+    background: radial-gradient(circle, #3b82f6 0%, transparent 70%);
+    opacity: 0.5;
+    position: absolute;
+    top: 50%; left: 50%; transform: translate(-50%, -60%);
+    filter: blur(20px);
+  }
+  .preview-a .ring {
+    width: 64px; height: 64px; border-radius: 50%;
+    border: 2px solid #3b82f6;
+    box-shadow: 0 0 20px rgba(59,130,246,0.5), inset 0 0 10px rgba(59,130,246,0.1);
+    z-index: 1;
+  }
+  .preview-a .pill {
+    background: rgba(59,130,246,0.15);
+    border: 1px solid rgba(59,130,246,0.4);
+    color: #3b82f6;
+    padding: 6px 16px;
+    border-radius: 100px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    z-index: 1;
+  }
+  .preview-a .bar {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, #3b82f6, transparent);
+    opacity: 0.6;
+  }
+
+  /* OPTION B — Violet/Purple (Grok/AI style) */
+  .preview-b { background: #08090a; }
+  .preview-b .glow {
+    width: 90px; height: 90px; border-radius: 50%;
+    background: radial-gradient(circle, #8b5cf6 0%, transparent 70%);
+    opacity: 0.5;
+    position: absolute;
+    top: 50%; left: 50%; transform: translate(-50%, -60%);
+    filter: blur(20px);
+  }
+  .preview-b .ring {
+    width: 64px; height: 64px; border-radius: 50%;
+    border: 2px solid #8b5cf6;
+    box-shadow: 0 0 20px rgba(139,92,246,0.5), inset 0 0 10px rgba(139,92,246,0.1);
+    z-index: 1;
+  }
+  .preview-b .pill {
+    background: rgba(139,92,246,0.15);
+    border: 1px solid rgba(139,92,246,0.4);
+    color: #8b5cf6;
+    padding: 6px 16px;
+    border-radius: 100px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    z-index: 1;
+  }
+  .preview-b .bar {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, #8b5cf6, transparent);
+    opacity: 0.6;
+  }
+
+  /* OPTION C — Cyan/Teal (HUD/terminal style) */
+  .preview-c { background: #08090a; }
+  .preview-c .glow {
+    width: 90px; height: 90px; border-radius: 50%;
+    background: radial-gradient(circle, #06b6d4 0%, transparent 70%);
+    opacity: 0.5;
+    position: absolute;
+    top: 50%; left: 50%; transform: translate(-50%, -60%);
+    filter: blur(20px);
+  }
+  .preview-c .ring {
+    width: 64px; height: 64px; border-radius: 50%;
+    border: 2px solid #06b6d4;
+    box-shadow: 0 0 20px rgba(6,182,212,0.5), inset 0 0 10px rgba(6,182,212,0.1);
+    z-index: 1;
+  }
+  .preview-c .pill {
+    background: rgba(6,182,212,0.15);
+    border: 1px solid rgba(6,182,212,0.4);
+    color: #06b6d4;
+    padding: 6px 16px;
+    border-radius: 100px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    z-index: 1;
+  }
+  .preview-c .bar {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, #06b6d4, transparent);
+    opacity: 0.6;
+  }
+
+  /* OPTION D — Amber/Orange (warm futuristic) */
+  .preview-d { background: #08090a; }
+  .preview-d .glow {
+    width: 90px; height: 90px; border-radius: 50%;
+    background: radial-gradient(circle, #f59e0b 0%, transparent 70%);
+    opacity: 0.4;
+    position: absolute;
+    top: 50%; left: 50%; transform: translate(-50%, -60%);
+    filter: blur(20px);
+  }
+  .preview-d .ring {
+    width: 64px; height: 64px; border-radius: 50%;
+    border: 2px solid #f59e0b;
+    box-shadow: 0 0 20px rgba(245,158,11,0.4), inset 0 0 10px rgba(245,158,11,0.08);
+    z-index: 1;
+  }
+  .preview-d .pill {
+    background: rgba(245,158,11,0.12);
+    border: 1px solid rgba(245,158,11,0.35);
+    color: #f59e0b;
+    padding: 6px 16px;
+    border-radius: 100px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    z-index: 1;
+  }
+  .preview-d .bar {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, #f59e0b, transparent);
+    opacity: 0.5;
+  }
+
+  .card-body {
+    padding: 16px 18px 18px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+  }
+  .card-body h3 { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+  .card-body p { font-size: 13px; color: rgba(255,255,255,0.45); line-height: 1.5; }
+
+  .card.selected-a { border-color: #3b82f6; }
+  .card.selected-b { border-color: #8b5cf6; }
+  .card.selected-c { border-color: #06b6d4; }
+  .card.selected-d { border-color: #f59e0b; }
+
+  .selected-indicator {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    padding: 14px 24px;
+    background: rgba(8,9,10,0.9);
+    backdrop-filter: blur(12px);
+    border-top: 1px solid rgba(255,255,255,0.08);
+    font-size: 13px;
+    color: rgba(255,255,255,0.5);
+    text-align: center;
+    display: none;
+  }
+  .selected-indicator.visible { display: block; }
+</style>
+</head>
+<body>
+<h2>What accent color direction feels right?</h2>
+<p class="subtitle">This single color will define the whole futuristic identity — glow effects, pulse rings, active states, all of it. Pick the one that feels most "Between Classes".</p>
+
+<div class="cards">
+  <div class="card" data-choice="a" onclick="pick(this, 'a')">
+    <div class="card-preview preview-a">
+      <div class="glow"></div>
+      <div class="ring"></div>
+      <div class="pill">START QUIZ</div>
+      <div class="bar"></div>
+    </div>
+    <div class="card-body">
+      <h3>Electric Blue</h3>
+      <p>Arc / Linear aesthetic. Clinical, precise, focused. Says "serious tool".</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="pick(this, 'b')">
+    <div class="card-preview preview-b">
+      <div class="glow"></div>
+      <div class="ring"></div>
+      <div class="pill">START QUIZ</div>
+      <div class="bar"></div>
+    </div>
+    <div class="card-body">
+      <h3>Violet / Purple</h3>
+      <p>Grok / AI aesthetic. Mysterious, intelligent, slightly alien. Says "AI-native".</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="pick(this, 'c')">
+    <div class="card-preview preview-c">
+      <div class="glow"></div>
+      <div class="ring"></div>
+      <div class="pill">START QUIZ</div>
+      <div class="bar"></div>
+    </div>
+    <div class="card-body">
+      <h3>Cyan / Teal</h3>
+      <p>Sci-fi HUD aesthetic. Think Iron Man UI, Vercel. Precise and futuristic.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="d" onclick="pick(this, 'd')">
+    <div class="card-preview preview-d">
+      <div class="glow"></div>
+      <div class="ring"></div>
+      <div class="pill">START QUIZ</div>
+      <div class="bar"></div>
+    </div>
+    <div class="card-body">
+      <h3>Amber / Gold</h3>
+      <p>Warm futuristic. Like a cockpit instrument panel. Uncommon, memorable.</p>
+    </div>
+  </div>
+</div>
+
+<div class="selected-indicator" id="indicator"></div>
+
+<script>
+let current = null;
+function pick(el, choice) {
+  if (current) current.classList.remove('selected', 'selected-a','selected-b','selected-c','selected-d');
+  el.classList.add('selected', 'selected-' + choice);
+  current = el;
+  const label = el.querySelector('h3').textContent;
+  const ind = document.getElementById('indicator');
+  ind.textContent = '✓ Selected: ' + label + ' — tell Claude in the terminal to continue';
+  ind.classList.add('visible');
+  // fire event if helper script is available
+  if (typeof toggleSelect === 'function') toggleSelect(el);
+}
+</script>
+</body>
+</html>

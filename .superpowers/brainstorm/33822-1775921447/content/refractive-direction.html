@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Refractive Monochrome Direction</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #08090a;
+    color: #fff;
+    font-family: -apple-system, 'Inter', sans-serif;
+    padding: 32px 24px 80px;
+    min-height: 100vh;
+  }
+  h2 { font-size: 22px; font-weight: 700; letter-spacing: -0.4px; margin-bottom: 6px; }
+  .subtitle { color: rgba(255,255,255,0.45); font-size: 14px; margin-bottom: 32px; line-height: 1.5; }
+
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+  }
+  .card {
+    background: #0f1011;
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 20px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.25s ease;
+  }
+  .card:hover { transform: translateY(-2px); border-color: rgba(255,255,255,0.15); }
+  .card.selected { border-color: rgba(255,255,255,0.6); border-width: 2px; }
+
+  .card-preview {
+    height: 220px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    gap: 14px;
+    background: #08090a;
+  }
+
+  /* A — Prismatic edge: card borders cycle through spectrum tints subtly */
+  .preview-a {
+    background: #08090a;
+  }
+  .preview-a .prismatic-card {
+    width: 180px;
+    background: #0f1011;
+    border-radius: 14px;
+    padding: 16px;
+    position: relative;
+    z-index: 1;
+  }
+  .preview-a .prismatic-card::before {
+    content: '';
+    position: absolute; inset: -1px;
+    border-radius: 15px;
+    background: conic-gradient(from 0deg,
+      rgba(180,180,255,0.6) 0%,
+      rgba(255,255,255,0.8) 15%,
+      rgba(180,255,220,0.5) 30%,
+      rgba(255,255,255,0.8) 45%,
+      rgba(255,200,200,0.5) 60%,
+      rgba(255,255,255,0.8) 75%,
+      rgba(180,180,255,0.6) 100%
+    );
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: destination-out;
+    mask-composite: exclude;
+    padding: 1px;
+    z-index: 0;
+  }
+  .preview-a .prismatic-card .label { font-size: 10px; letter-spacing: 1px; color: rgba(255,255,255,0.4); margin-bottom: 6px; }
+  .preview-a .prismatic-card .subject { font-size: 16px; font-weight: 600; color: #fff; margin-bottom: 4px; }
+  .preview-a .prismatic-card .sub { font-size: 12px; color: rgba(255,255,255,0.4); margin-bottom: 12px; }
+  .preview-a .prismatic-card .btn {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: #fff;
+    border-radius: 8px;
+    padding: 8px 0;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 600;
+    width: 100%;
+  }
+  .preview-a .tag { font-size: 11px; color: rgba(255,255,255,0.35); letter-spacing: 0.5px; }
+
+  /* B — Crystalline geometry: angular facets, sharp specular highlights */
+  .preview-b { background: #08090a; }
+  .preview-b .crystal {
+    position: relative;
+    width: 70px; height: 70px;
+    z-index: 1;
+  }
+  .preview-b .crystal svg { width: 100%; height: 100%; }
+  .preview-b .crystal-glow {
+    position: absolute; inset: -12px;
+    background: radial-gradient(circle, rgba(255,255,255,0.12) 0%, transparent 70%);
+    border-radius: 50%;
+    filter: blur(6px);
+  }
+  .preview-b .chip {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-top-color: rgba(255,255,255,0.3);
+    color: rgba(255,255,255,0.7);
+    padding: 5px 14px;
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 500;
+    z-index: 1;
+  }
+  .preview-b .facet-line {
+    position: absolute;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent);
+    height: 1px;
+    width: 80%;
+    top: 38%;
+  }
+
+  /* C — Iridescent shimmer: surface has oil-slick hue-shift, stays almost white */
+  .preview-c { background: #08090a; }
+  .preview-c .shimmer-card {
+    width: 185px;
+    border-radius: 16px;
+    padding: 18px;
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(135deg,
+      rgba(255,255,255,0.05) 0%,
+      rgba(200,210,255,0.07) 30%,
+      rgba(255,240,255,0.05) 50%,
+      rgba(210,255,240,0.07) 70%,
+      rgba(255,255,255,0.05) 100%
+    );
+    border: 1px solid rgba(255,255,255,0.1);
+    border-top-color: rgba(255,255,255,0.25);
+    border-left-color: rgba(255,255,255,0.18);
+  }
+  .preview-c .shimmer-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(105deg,
+      transparent 30%,
+      rgba(255,255,255,0.04) 45%,
+      rgba(230,240,255,0.06) 50%,
+      rgba(255,255,255,0.04) 55%,
+      transparent 70%
+    );
+    pointer-events: none;
+  }
+  .preview-c .label { font-size: 10px; letter-spacing: 1px; color: rgba(255,255,255,0.35); margin-bottom: 8px; }
+  .preview-c .value { font-size: 28px; font-weight: 700; color: #fff; letter-spacing: -1px; margin-bottom: 4px; }
+  .preview-c .sub { font-size: 12px; color: rgba(255,255,255,0.4); }
+
+  /* D — Pure specular: no color at all, just sharp geometric light on dark */
+  .preview-d { background: #08090a; }
+  .preview-d .specular-ring {
+    width: 72px; height: 72px; border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.08);
+    position: relative;
+    z-index: 1;
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,0.03),
+      inset 0 1px 0 rgba(255,255,255,0.25),
+      inset 0 -1px 0 rgba(255,255,255,0.04);
+  }
+  .preview-d .specular-ring::before {
+    content: '';
+    position: absolute;
+    top: 3px; left: 50%; transform: translateX(-50%);
+    width: 30px; height: 2px;
+    background: rgba(255,255,255,0.6);
+    border-radius: 100px;
+    filter: blur(2px);
+  }
+  .preview-d .specular-ring::after {
+    content: '';
+    position: absolute;
+    inset: 8px; border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.06);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.15);
+  }
+  .preview-d .specular-text {
+    font-size: 12px; color: rgba(255,255,255,0.25);
+    letter-spacing: 2px;
+    font-weight: 500;
+    z-index: 1;
+  }
+  .preview-d .specular-line {
+    width: 120px; height: 1px;
+    background: linear-gradient(90deg,
+      transparent,
+      rgba(255,255,255,0.5) 20%,
+      rgba(255,255,255,0.8) 50%,
+      rgba(255,255,255,0.5) 80%,
+      transparent
+    );
+    z-index: 1;
+  }
+
+  .card-body {
+    padding: 16px 18px 18px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+  }
+  .card-body h3 { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+  .card-body p { font-size: 13px; color: rgba(255,255,255,0.4); line-height: 1.5; }
+
+  .selected-indicator {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    padding: 14px 24px;
+    background: rgba(8,9,10,0.95);
+    backdrop-filter: blur(12px);
+    border-top: 1px solid rgba(255,255,255,0.08);
+    font-size: 13px;
+    color: rgba(255,255,255,0.5);
+    text-align: center;
+    display: none;
+  }
+  .selected-indicator.visible { display: block; }
+</style>
+</head>
+<body>
+<h2>Which kind of "refractive monochrome" feels right?</h2>
+<p class="subtitle">No color — just different ways white light interacts with dark surfaces. Each has a completely different personality.</p>
+
+<div class="cards">
+
+  <div class="card" data-choice="a" onclick="pick(this,'a')">
+    <div class="card-preview preview-a">
+      <div class="prismatic-card">
+        <div class="label">NEXT CLASS</div>
+        <div class="subject">Physics 101</div>
+        <div class="sub">In 23 min · Room 204</div>
+        <div class="btn">Start Quiz</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Prismatic borders</h3>
+      <p>Card edges cycle through subtle spectrum tints — like light splitting through a prism. Stays monochrome, but alive.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="pick(this,'b')">
+    <div class="card-preview preview-b">
+      <div class="facet-line"></div>
+      <div class="crystal">
+        <div class="crystal-glow"></div>
+        <svg viewBox="0 0 70 70" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <polygon points="35,5 60,20 60,50 35,65 10,50 10,20" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+          <polygon points="35,5 60,20 35,35" fill="rgba(255,255,255,0.07)"/>
+          <polygon points="35,5 10,20 35,35" fill="rgba(255,255,255,0.04)"/>
+          <polygon points="60,20 60,50 35,35" fill="rgba(255,255,255,0.09)"/>
+          <polygon points="10,20 10,50 35,35" fill="rgba(255,255,255,0.03)"/>
+          <line x1="35" y1="5" x2="35" y2="35" stroke="rgba(255,255,255,0.3)" stroke-width="0.75"/>
+          <line x1="60" y1="20" x2="35" y2="35" stroke="rgba(255,255,255,0.15)" stroke-width="0.5"/>
+          <line x1="10" y1="20" x2="35" y2="35" stroke="rgba(255,255,255,0.08)" stroke-width="0.5"/>
+          <!-- specular highlight at top vertex -->
+          <circle cx="35" cy="5" r="2" fill="rgba(255,255,255,0.9)"/>
+        </svg>
+      </div>
+      <div class="chip">LISTENING</div>
+    </div>
+    <div class="card-body">
+      <h3>B — Crystalline geometry</h3>
+      <p>Faceted shapes with sharp specular highlights. Like cut glass or a gem. Angular, precise, zero color.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="pick(this,'c')">
+    <div class="card-preview preview-c">
+      <div class="shimmer-card">
+        <div class="label">TODAY'S STREAK</div>
+        <div class="value">7</div>
+        <div class="sub">days in a row</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Iridescent shimmer</h3>
+      <p>Surfaces shift between near-invisible hues depending on angle — oil-slick on glass. Barely there, extremely premium.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="d" onclick="pick(this,'d')">
+    <div class="card-preview preview-d">
+      <div class="specular-line"></div>
+      <div class="specular-ring"></div>
+      <div class="specular-text">LISTENING</div>
+    </div>
+    <div class="card-body">
+      <h3>D — Pure specular light</h3>
+      <p>Absolutely zero color — just white light hitting dark surfaces. Sharp edge highlights, no glow, no shimmer. Brutally minimal.</p>
+    </div>
+  </div>
+
+</div>
+
+<div class="selected-indicator" id="indicator"></div>
+
+<script>
+let current = null;
+function pick(el, choice) {
+  if (current) current.classList.remove('selected');
+  el.classList.add('selected');
+  current = el;
+  const label = el.querySelector('h3').textContent;
+  const ind = document.getElementById('indicator');
+  ind.textContent = '✓ ' + label + ' — tell Claude in the terminal to continue';
+  ind.classList.add('visible');
+  if (typeof toggleSelect === 'function') toggleSelect(el);
+}
+</script>
+</body>
+</html>

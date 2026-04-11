@@ -21,30 +21,61 @@ final class QuizSessionManager {
     var errorMessage: String? = nil
     var ttsAmplitude: Float = 0
     var micAmplitude: Float = 0
+    var isPreparingQuiz: Bool = false
 
     private(set) var questions: [QuizQuestion] = []
     private var session: QuizSession?
     private let tts = ElevenLabsService()
     private let stt = SpeechService()
     private var modelContext: ModelContext?
+    private var activeRunToken = UUID()
 
     func configure(modelContext: ModelContext) {
         self.modelContext = modelContext
     }
 
-    func start(subject: Subject) async {
+    func start(subject: Subject, topicName: String? = nil, noteIDs: [UUID] = []) async {
+        guard !isPreparingQuiz else { return }
         errorMessage = nil
-        var allQuestions = subject.notes.flatMap { $0.questions }
-
-        // Issue A: fallback questions when notes have text but Gemini never ran
-        if allQuestions.isEmpty {
-            let notesWithText = subject.notes.filter { !$0.extractedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
-            if notesWithText.isEmpty {
-                statusLabel = "No notes for \(subject.name) yet — capture notes first."
-                state = .noContent
-                return
+        isPreparingQuiz = true
+        let runToken = UUID()
+        activeRunToken = runToken
+        defer {
+            if activeRunToken == runToken {
+                isPreparingQuiz = false
             }
+        }
+
+        let scopedNotes: [Note]
+        if !noteIDs.isEmpty {
+            let noteIDSet = Set(noteIDs)
+            scopedNotes = subject.notes.filter { noteIDSet.contains($0.id) }
+        } else if let topicName, !topicName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            scopedNotes = subject.notes.filter {
+                $0.topicName.trimmingCharacters(in: .whitespacesAndNewlines).localizedCaseInsensitiveCompare(topicName) == .orderedSame
+            }
+        } else {
+            scopedNotes = subject.notes
+        }
+
+        let notesWithText = scopedNotes.filter { !$0.extractedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        if notesWithText.isEmpty {
+            let scopeLabel = topicName ?? subject.name
+            statusLabel = "No notes for \(scopeLabel) yet — capture notes first."
+            state = .noContent
+            return
+        }
+
+        statusLabel = "Preparing quiz…"
+        var allQuestions = await ensureQuestionsForScopedNotes(notesWithText, questionTarget: 5, runToken: runToken)
+        guard activeRunToken == runToken else { return }
+        if allQuestions.isEmpty {
             allQuestions = generateFallbackQuestions(from: notesWithText)
+        }
+        guard !allQuestions.isEmpty else {
+            statusLabel = "Couldn’t build quiz questions from these notes yet."
+            state = .noContent
+            return
         }
 
         questions = Array(allQuestions.shuffled().prefix(5))
@@ -55,13 +86,59 @@ final class QuizSessionManager {
         modelContext?.insert(sess)
         session = sess
 
-        await runQuestion(at: 0)
+        await runQuestion(at: 0, runToken: runToken)
     }
 
     func stop() {
+        activeRunToken = UUID()
+        isPreparingQuiz = false
         tts.stop()
         _ = stt.stopListening()
+        statusLabel = ""
         state = .idle
+    }
+
+    // MARK: - Question generation
+
+    private func ensureQuestionsForScopedNotes(_ notes: [Note], questionTarget: Int, runToken: UUID) async -> [QuizQuestion] {
+        var collected = notes.flatMap { $0.questions }
+        if collected.count >= questionTarget {
+            return collected
+        }
+
+        guard let modelContext else { return collected }
+
+        let notesNeedingQuestions = notes.filter {
+            $0.questions.isEmpty && !$0.extractedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
+
+        for note in notesNeedingQuestions {
+            if activeRunToken != runToken { break }
+            statusLabel = notes.count == 1 ? "Generating quiz questions…" : "Generating quiz questions from your notes…"
+            let generated = await GeminiService.generateQuestionsWithFallback(
+                from: note.extractedText,
+                noteID: note.id
+            )
+            guard !generated.isEmpty else { continue }
+
+            for question in generated {
+                modelContext.insert(question)
+                note.questions.append(question)
+            }
+            try? modelContext.save()
+
+            collected.append(contentsOf: generated)
+            if collected.count >= questionTarget { break }
+        }
+
+        if collected.count < questionTarget {
+            let fallback = generateFallbackQuestions(from: notes)
+            for question in fallback where collected.count < questionTarget && collected.contains(where: { $0.question == question.question }) == false {
+                collected.append(question)
+            }
+        }
+
+        return collected
     }
 
     // MARK: - Fallback question generation
@@ -95,9 +172,10 @@ final class QuizSessionManager {
 
     // MARK: - State machine
 
-    private func runQuestion(at index: Int) async {
+    private func runQuestion(at index: Int, runToken: UUID) async {
+        guard activeRunToken == runToken else { return }
         guard index < questions.count else {
-            finishSession()
+            finishSession(runToken: runToken)
             return
         }
 
@@ -137,6 +215,8 @@ final class QuizSessionManager {
             try? await Task.sleep(for: .milliseconds(1500))
         }
 
+        guard activeRunToken == runToken else { return }
+
         // Listen for answer
         state = .listening
         statusLabel = "Listening…"
@@ -145,7 +225,7 @@ final class QuizSessionManager {
             try stt.startListening { [weak self] transcript in
                 guard let self else { return }
                 Task {
-                    await self.handleAnswer(transcript: transcript, question: q, index: index)
+                    await self.handleAnswer(transcript: transcript, question: q, index: index, runToken: runToken)
                 }
             }
             // Observe mic amplitude
@@ -158,11 +238,12 @@ final class QuizSessionManager {
             }
         } catch {
             // Can't listen — skip this question and move on
-            await runQuestion(at: index + 1)
+            await runQuestion(at: index + 1, runToken: runToken)
         }
     }
 
-    private func handleAnswer(transcript: String, question: QuizQuestion, index: Int) async {
+    private func handleAnswer(transcript: String, question: QuizQuestion, index: Int, runToken: UUID) async {
+        guard activeRunToken == runToken else { return }
         state = .evaluating
         statusLabel = "Evaluating…"
         micAmplitude = 0
@@ -180,6 +261,8 @@ final class QuizSessionManager {
         } catch {
             result = EvaluationResult(correct: false, feedback: "Let's keep going.", explanation: nil)
         }
+
+        guard activeRunToken == runToken else { return }
 
         question.wasCorrect = result.correct
         if result.correct { session?.score += 1 }
@@ -201,12 +284,14 @@ final class QuizSessionManager {
 
         // Issue D: small delay after TTS before next question
         try? await Task.sleep(for: .milliseconds(300))
+        guard activeRunToken == runToken else { return }
 
         // Issue E: properly increment and detect end
-        await runQuestion(at: index + 1)
+        await runQuestion(at: index + 1, runToken: runToken)
     }
 
-    private func finishSession() {
+    private func finishSession(runToken: UUID) {
+        guard activeRunToken == runToken else { return }
         let score = session?.score ?? 0
         let total = questions.count
         session?.totalQuestions = total
