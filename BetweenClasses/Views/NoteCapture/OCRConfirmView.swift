@@ -378,19 +378,6 @@ struct OCRConfirmView: View {
 
         UINotificationFeedbackGenerator().notificationOccurred(.success)
 
-        // Pre-generate questions asynchronously (with fallback)
-        Task { @MainActor in
-            let questions = await GeminiService.generateQuestionsWithFallback(
-                from: editedText,
-                noteID: note.id
-            )
-            for q in questions {
-                modelContext.insert(q)
-                note.questions.append(q)
-            }
-            try? modelContext.save()
-        }
-
         try? modelContext.save()
         onSave(note)
 
