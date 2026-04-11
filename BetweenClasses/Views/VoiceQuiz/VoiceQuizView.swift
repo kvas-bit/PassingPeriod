@@ -175,10 +175,10 @@ struct VoiceQuizView: View {
                             }
                         }
                     } label: {
-                        Text("Start Quiz")
+                        Text(manager.isPreparingQuiz ? "Preparing…" : "Start Quiz")
                     }
-                    .buttonStyle(BCPrimaryButtonStyle(isEnabled: appState.quizSubject != nil))
-                    .disabled(appState.quizSubject == nil)
+                    .buttonStyle(BCPrimaryButtonStyle(isEnabled: appState.quizSubject != nil && !manager.isPreparingQuiz))
+                    .disabled(appState.quizSubject == nil || manager.isPreparingQuiz)
                 }
             }
             .padding(.horizontal, BCSpacing.xxl)
