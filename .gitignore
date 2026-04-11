@@ -12,3 +12,6 @@ CURSOR_HANDOFF.md
 
 # macOS
 .DS_Store
+
+# Xcode / local build products (never commit)
+.derivedData/
