@@ -83,7 +83,6 @@ struct HomeView: View {
                 // MARK: Recent Notes
                 if !notes.isEmpty {
                     VStack(alignment: .leading, spacing: 12) {
-                        // Header row: label + count badge + See All button
                         HStack(spacing: 8) {
                             Text("RECENT NOTES · \(notes.count)")
                                 .bcCaption()

@@ -71,7 +71,6 @@ struct ScheduleView: View {
         }
         .onAppear {
             appeared = true
-            // Auto-refresh when subjects are missing or have no schedule times
             let needsRefresh = subjects.isEmpty || subjects.allSatisfy { $0.scheduleTimes.isEmpty }
             if needsRefresh && !isRefreshing {
                 Task { await refresh() }
@@ -102,7 +101,7 @@ struct ScheduleView: View {
     private var emptyState: some View {
         VStack(spacing: 16) {
             Image(systemName: "calendar.badge.exclamationmark")
-                .font(.system(size: 48))
+                .font(.system(size: 48, weight: .thin))
                 .foregroundStyle(Color.textTertiary)
 
             Text("No schedule yet")
@@ -140,8 +139,6 @@ struct ScheduleView: View {
         isRefreshing = true
         defer { isRefreshing = false }
 
-        // 1. Canvas: fetch enrolled courses and upsert subjects (names only — Canvas API
-        //    does not expose recurring class schedule; schedule comes from iCal below).
         do {
             let fetched = try await CanvasService.fetchCourses()
             for s in fetched {
@@ -153,23 +150,18 @@ struct ScheduleView: View {
             }
             try? modelContext.save()
         } catch CanvasError.notConfigured {
-            // No Canvas credentials set — skip silently
         } catch {}
 
-        // 2. iCal: parse and group by course name
         if let stored = try? KeychainService.retrieve(KeychainKey.icalURL),
            !stored.isEmpty,
            let url = URL(string: stored) {
             if let grouped = try? await iCalService.parseGrouped(from: url) {
-                // Filter C: If Canvas is configured and returned courses, use those names
-                // as a whitelist — only import iCal events that fuzzy-match a Canvas course.
                 let canvasConfigured = KeychainService.exists(KeychainKey.canvasToken)
                 let canvasNames: [String] = canvasConfigured
                     ? subjects.compactMap { $0.canvasID.isEmpty ? nil : $0.name }
                     : []
 
                 for (name, times) in grouped {
-                    // Skip events that don't match any Canvas course (when Canvas is active)
                     if canvasConfigured && !canvasNames.isEmpty {
                         guard canvasNamesContain(name, canvasNames: canvasNames) else { continue }
                     }
@@ -190,8 +182,6 @@ struct ScheduleView: View {
     // MARK: - Canvas whitelist helper
 
     private func canvasNamesContain(_ icalName: String, canvasNames: [String]) -> Bool {
-        // True if iCal event name contains any Canvas course code (e.g., "CSC413" in "CSC413 Digital Media")
-        // or Canvas name is a substring of iCal name, or vice versa
         let normalizedICal = icalName.uppercased()
         return canvasNames.contains { canvas in
             let normalizedCanvas = canvas.uppercased()
