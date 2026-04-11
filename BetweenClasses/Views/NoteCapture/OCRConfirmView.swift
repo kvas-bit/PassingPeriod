@@ -15,6 +15,8 @@ struct OCRConfirmView: View {
 
     @State private var editedText: String
     @State private var selectedSubject: Subject?
+    @State private var selectedExistingTopic: String = ""
+    @State private var customTopicName: String = ""
     @State private var isSaving = false
 
     init(imageData: Data,
@@ -26,6 +28,18 @@ struct OCRConfirmView: View {
         self.onSave = onSave
         self.onCaptureAnother = onCaptureAnother
         self._editedText = State(initialValue: extractedText)
+    }
+
+    private var existingTopics: [String] {
+        selectedSubject?.topicNames ?? []
+    }
+
+    private var resolvedTopicName: String {
+        let custom = customTopicName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !custom.isEmpty { return custom }
+        let existing = selectedExistingTopic.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !existing.isEmpty { return existing }
+        return "Unsorted"
     }
 
     var body: some View {
@@ -101,6 +115,57 @@ struct OCRConfirmView: View {
                             }
                         }
 
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Topic / Lecture")
+                                .bcCaption()
+                                .foregroundStyle(Color.textSecond)
+                                .textCase(.uppercase)
+
+                            if !existingTopics.isEmpty {
+                                Menu {
+                                    Button("Use Unsorted") {
+                                        selectedExistingTopic = "Unsorted"
+                                        customTopicName = ""
+                                    }
+                                    ForEach(existingTopics, id: \.self) { topic in
+                                        Button(topic) {
+                                            selectedExistingTopic = topic
+                                            customTopicName = ""
+                                        }
+                                    }
+                                } label: {
+                                    HStack {
+                                        VStack(alignment: .leading, spacing: 4) {
+                                            Text(selectedExistingTopic.isEmpty ? "Pick existing topic" : selectedExistingTopic)
+                                                .bcBody()
+                                                .foregroundStyle(selectedExistingTopic.isEmpty ? Color.textSecond : Color.textPrimary)
+                                            Text("Reuse an existing lecture/topic")
+                                                .font(.system(size: 12, weight: .regular))
+                                                .foregroundStyle(Color.textTertiary)
+                                        }
+                                        Spacer()
+                                        Image(systemName: "chevron.down")
+                                            .foregroundStyle(Color.textSecond)
+                                            .font(.system(size: 12))
+                                    }
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 14)
+                                    .glassCard(cornerRadius: 12)
+                                }
+                            }
+
+                            TextField("New topic or lecture name", text: $customTopicName, prompt: Text("e.g. Chapter 4, Derivatives, Crusades Day 1"))
+                                .textInputAutocapitalization(.words)
+                                .autocorrectionDisabled()
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 14)
+                                .glassCard(cornerRadius: 12)
+
+                            Text("Saved as: \(resolvedTopicName)")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundStyle(Color.textTertiary)
+                        }
+
                         // Primary save button
                         Button {
                             saveNote(captureAnother: false)
@@ -165,6 +230,11 @@ struct OCRConfirmView: View {
         }
         .onAppear {
             selectedSubject = subjects.first
+            selectedExistingTopic = subjects.first?.topicNames.first ?? ""
+        }
+        .onChange(of: selectedSubject?.id) { _, _ in
+            selectedExistingTopic = selectedSubject?.topicNames.first ?? ""
+            customTopicName = ""
         }
     }
 
@@ -174,7 +244,12 @@ struct OCRConfirmView: View {
         guard let subject = selectedSubject else { return }
         isSaving = true
 
-        let note = Note(imageData: imageData, extractedText: editedText, subjectID: subject.id)
+        let note = Note(
+            imageData: imageData,
+            extractedText: editedText,
+            subjectID: subject.id,
+            topicName: resolvedTopicName
+        )
         modelContext.insert(note)
         subject.notes.append(note)
 
