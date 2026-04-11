@@ -8,6 +8,7 @@ struct HomeView: View {
     @Query private var subjects: [Subject]
 
     @State private var appeared = false
+    @State private var showSettings = false
 
     private var nextSubject: Subject? {
         subjects
@@ -49,7 +50,17 @@ struct HomeView: View {
                             .foregroundStyle(Color.textSecond)
                     }
                     Spacer()
-                    GlassChip(text: formattedDate())
+                    HStack(spacing: 8) {
+                        GlassChip(text: formattedDate())
+                        Button { showSettings = true } label: {
+                            Image(systemName: "gearshape")
+                                .font(.system(size: 15))
+                                .foregroundStyle(Color.textSecond)
+                                .frame(width: 34, height: 34)
+                                .glassCard(cornerRadius: 10)
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
                 .padding(.top, 20)
 
@@ -105,6 +116,9 @@ struct HomeView: View {
         .background(Color.bgPrimary)
         .onAppear { appeared = true }
         .onDisappear { appeared = false }
+        .sheet(isPresented: $showSettings) {
+            CanvasConnectView()
+        }
     }
 
     private func formattedDate() -> String {
