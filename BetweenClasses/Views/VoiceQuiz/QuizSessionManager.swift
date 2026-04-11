@@ -8,6 +8,7 @@ enum QuizState: Equatable {
     case listening
     case evaluating
     case complete(score: Int, total: Int)
+    case noContent
 }
 
 @Observable
@@ -33,7 +34,8 @@ final class QuizSessionManager {
     func start(subject: Subject) async {
         let allQuestions = subject.notes.flatMap { $0.questions }
         guard !allQuestions.isEmpty else {
-            state = .complete(score: 0, total: 0)
+            statusLabel = "No notes for \(subject.name) yet — capture notes first."
+            state = .noContent
             return
         }
         questions = Array(allQuestions.shuffled().prefix(5))
