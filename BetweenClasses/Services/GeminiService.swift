@@ -7,8 +7,22 @@ struct GeminiService {
         (try? KeychainService.retrieve(KeychainKey.geminiKey)) ?? ""
     }
 
-    // MARK: - Generate Questions
+    // MARK: - Generate Questions (with automatic fallback)
 
+    /// Primary entry point. Always returns at least fallback questions so the
+    /// quiz never silently fails due to a missing API key or network error.
+    static func generateQuestionsWithFallback(from text: String, noteID: UUID) async -> [QuizQuestion] {
+        if !apiKey.isEmpty {
+            if let questions = try? await generateQuestions(from: text, noteID: noteID),
+               !questions.isEmpty {
+                return questions
+            }
+        }
+        // API key missing or Gemini call failed — use rule-based fallback
+        return makeFallbackQuestions(from: text, noteID: noteID)
+    }
+
+    /// Low-level call — throws on any failure. Prefer `generateQuestionsWithFallback`.
     static func generateQuestions(from text: String, noteID: UUID) async throws -> [QuizQuestion] {
         let prompt = """
         Generate exactly 5 active recall question-and-answer pairs from the following notes.
@@ -32,6 +46,50 @@ struct GeminiService {
         }
 
         return pairs.map { QuizQuestion(question: $0.question, expectedAnswer: $0.expectedAnswer, noteID: noteID) }
+    }
+
+    // MARK: - Fallback question generation (no API required)
+
+    /// Splits the note text into sentences/paragraphs and produces simple
+    /// "What does this note say about X?" questions. Dumb but better than nothing.
+    static func makeFallbackQuestions(from text: String, noteID: UUID) -> [QuizQuestion] {
+        // Try paragraphs first, then sentences, then word-chunked lines
+        let paragraphs = text
+            .components(separatedBy: "\n")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { $0.count > 20 }
+
+        let chunks: [String]
+        if paragraphs.count >= 3 {
+            chunks = paragraphs
+        } else {
+            // Fall back to sentence splitting
+            chunks = text
+                .components(separatedBy: CharacterSet(charactersIn: ".!?"))
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { $0.count > 20 }
+        }
+
+        // Build up to 5 questions, each anchored to the first ~5 words of the chunk
+        let targets = Array(chunks.prefix(5))
+        guard !targets.isEmpty else {
+            // Absolute last-resort: one generic question about the whole note
+            return [QuizQuestion(
+                question: "Summarize what these notes are about.",
+                expectedAnswer: String(text.prefix(200)),
+                noteID: noteID
+            )]
+        }
+
+        return targets.map { chunk in
+            let words = chunk.split(separator: " ").prefix(5).joined(separator: " ")
+            let topic = words.trimmingCharacters(in: .punctuationCharacters)
+            return QuizQuestion(
+                question: "What do your notes say about \"\(topic)\"?",
+                expectedAnswer: String(chunk.prefix(300)),
+                noteID: noteID
+            )
+        }
     }
 
     // MARK: - Evaluate Answer
