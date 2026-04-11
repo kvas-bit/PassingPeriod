@@ -176,13 +176,9 @@ struct HomeView: View {
                         appState.selectedTab = .capture
                     } label: {
                         Text("Open capture")
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundStyle(.black)
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                            .background(Color.white, in: RoundedRectangle(cornerRadius: BCRadius.control, style: .continuous))
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(BCPrimaryButtonStyle())
                 }
             }
         }
