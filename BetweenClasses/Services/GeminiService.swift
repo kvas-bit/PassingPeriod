@@ -1,10 +1,18 @@
 import Foundation
+import UIKit
 
 struct GeminiService {
     /// Stable Flash model for question + evaluation calls.
     private static let modelName = "gemini-2.5-flash"
+    private static let flashOCRModelName = "gemini-2.5-flash"
+    private static let proOCRModelName = "gemini-2.5-pro"
+
+    private static func endpoint(for model: String) -> String {
+        "https://generativelanguage.googleapis.com/v1beta/models/\(model):generateContent"
+    }
+
     private static var endpoint: String {
-        "https://generativelanguage.googleapis.com/v1beta/models/\(modelName):generateContent"
+        endpoint(for: modelName)
     }
 
     private static var apiKey: String {
@@ -12,6 +20,111 @@ struct GeminiService {
     }
 
     private static let maxNoteCharsForPrompt = 14_000
+
+    // MARK: - OCR
+
+    static func extractStructuredOCR(from imageData: Data, localText: String, preferPro: Bool) async throws -> OCRDraft {
+        let prompt = """
+        You are doing OCR cleanup for a student note-capture app.
+
+        You will receive:
+        1. the raw page image
+        2. a rough local OCR transcript that may be incomplete or wrong
+
+        Your job:
+        - recover the clearest possible note text from the image
+        - preserve line breaks where they help readability
+        - do not hallucinate details not visible in the image
+        - propose a short title and a likely topic / lecture label
+        - call out unreadable regions briefly
+
+        Return JSON only with this exact shape:
+        {
+          "raw_text": "best cleaned transcript",
+          "title": "short note title or empty string",
+          "likely_topic": "lecture/topic label or empty string",
+          "confidence": "one short sentence about confidence",
+          "unreadable_regions": ["brief note", "brief note"]
+        }
+
+        If the local OCR below is useful, use it as a hint, but trust the image more.
+
+        Local OCR hint:
+        \(localText.isEmpty ? "(empty)" : truncateForPrompt(localText))
+        """
+
+        let raw = try await requestMultimodal(
+            prompt: prompt,
+            imageData: imageData,
+            model: preferPro ? proOCRModelName : flashOCRModelName,
+            jsonMode: true,
+            temperature: 0.1
+        )
+        let cleaned = stripCodeFences(raw)
+        guard let data = cleaned.data(using: .utf8) else { throw GeminiError.parseError }
+        let payload = try JSONDecoder().decode(OCRResponse.self, from: data)
+
+        let text = payload.rawText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { throw GeminiError.parseError }
+
+        return OCRDraft(
+            text: text,
+            source: preferPro ? .geminiPro : .geminiFlash,
+            suggestedTitle: nilIfEmpty(payload.title),
+            suggestedTopic: nilIfEmpty(payload.likelyTopic),
+            confidenceSummary: nilIfEmpty(payload.confidence),
+            unreadableRegions: payload.unreadableRegions.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+        )
+    }
+
+    static func cleanupNotes(currentText: String, imageData: Data?) async throws -> CleanedNotesResult {
+        let trimmed = currentText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { throw GeminiError.parseError }
+
+        let prompt = """
+        You clean up OCR'd class notes conservatively.
+
+        Rules:
+        - preserve meaning exactly
+        - fix obvious OCR mistakes, spacing, punctuation, and broken line breaks
+        - keep bullets and sections when they help readability
+        - do NOT add new facts that are not in the text or image
+        - if something is unclear, leave it cautious instead of inventing
+
+        Return JSON only with this exact shape:
+        {
+          "cleaned_text": "rewritten but faithful notes",
+          "change_summary": "one short sentence saying what you cleaned"
+        }
+
+        Existing note text:
+        \(truncateForPrompt(trimmed))
+        """
+
+        let raw: String
+        if let imageData {
+            raw = try await requestMultimodal(
+                prompt: prompt,
+                imageData: imageData,
+                model: flashOCRModelName,
+                jsonMode: true,
+                temperature: 0.1
+            )
+        } else {
+            raw = try await request(prompt: prompt, jsonMode: true, temperature: 0.1)
+        }
+
+        let cleaned = stripCodeFences(raw)
+        guard let data = cleaned.data(using: .utf8) else { throw GeminiError.parseError }
+        let payload = try JSONDecoder().decode(CleanedNotesResponse.self, from: data)
+        let cleanedText = payload.cleanedText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanedText.isEmpty else { throw GeminiError.parseError }
+
+        return CleanedNotesResult(
+            cleanedText: cleanedText,
+            changeSummary: nilIfEmpty(payload.changeSummary)
+        )
+    }
 
     // MARK: - Generate Questions (with automatic fallback)
 
@@ -243,9 +356,45 @@ struct GeminiService {
     // MARK: - Core request
 
     private static func request(prompt: String, jsonMode: Bool, temperature: Double) async throws -> String {
+        try await requestParts(
+            parts: [["text": prompt]],
+            model: modelName,
+            jsonMode: jsonMode,
+            temperature: temperature
+        )
+    }
+
+    private static func requestMultimodal(
+        prompt: String,
+        imageData: Data,
+        model: String,
+        jsonMode: Bool,
+        temperature: Double
+    ) async throws -> String {
+        let upload = normalizedUploadPayload(for: imageData)
+        return try await requestParts(
+            parts: [
+                ["text": prompt],
+                ["inline_data": [
+                    "mime_type": upload.mimeType,
+                    "data": upload.data.base64EncodedString()
+                ]]
+            ],
+            model: model,
+            jsonMode: jsonMode,
+            temperature: temperature
+        )
+    }
+
+    private static func requestParts(
+        parts: [[String: Any]],
+        model: String,
+        jsonMode: Bool,
+        temperature: Double
+    ) async throws -> String {
         guard !apiKey.isEmpty else { throw GeminiError.noAPIKey }
 
-        let urlString = "\(endpoint)?key=\(apiKey)"
+        let urlString = "\(endpoint(for: model))?key=\(apiKey)"
         guard let url = URL(string: urlString) else { throw GeminiError.httpError }
 
         var req = URLRequest(url: url)
@@ -260,7 +409,7 @@ struct GeminiService {
         }
 
         let body: [String: Any] = [
-            "contents": [["parts": [["text": prompt]]]],
+            "contents": [["parts": parts]],
             "generationConfig": generationConfig
         ]
         req.httpBody = try JSONSerialization.data(withJSONObject: body)
@@ -274,8 +423,11 @@ struct GeminiService {
               let candidates = json["candidates"] as? [[String: Any]],
               let first = candidates.first,
               let content = first["content"] as? [String: Any],
-              let parts = content["parts"] as? [[String: Any]],
-              let text = parts.first?["text"] as? String else {
+              let parts = content["parts"] as? [[String: Any]] else {
+            throw GeminiError.parseError
+        }
+        let text = parts.compactMap { $0["text"] as? String }.joined()
+        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             throw GeminiError.parseError
         }
         return text
@@ -296,6 +448,24 @@ struct GeminiService {
             .replacingOccurrences(of: "```JSON", with: "")
             .replacingOccurrences(of: "```", with: "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private static func nilIfEmpty(_ value: String?) -> String? {
+        guard let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines), !trimmed.isEmpty else { return nil }
+        return trimmed
+    }
+
+    private static func normalizedUploadPayload(for imageData: Data) -> (data: Data, mimeType: String) {
+        if imageData.starts(with: [0x89, 0x50, 0x4E, 0x47]) {
+            return (imageData, "image/png")
+        }
+        if imageData.starts(with: [0xFF, 0xD8, 0xFF]) {
+            return (imageData, "image/jpeg")
+        }
+        if let image = UIImage(data: imageData), let jpegData = image.jpegData(compressionQuality: 0.92) {
+            return (jpegData, "image/jpeg")
+        }
+        return (imageData, "image/jpeg")
     }
 
     private static func decodeQAPairs(_ raw: String, noteID: UUID, minimum: Int, maximum: Int) throws -> [QuizQuestion] {
@@ -323,6 +493,46 @@ private struct StudyAnchor: Codable {
 
 private struct AnchorEnvelope: Codable {
     let anchors: [StudyAnchor]
+}
+
+struct CleanedNotesResult {
+    let cleanedText: String
+    let changeSummary: String?
+}
+
+private struct OCRResponse: Decodable {
+    let rawText: String
+    let title: String?
+    let likelyTopic: String?
+    let confidence: String?
+    let unreadableRegions: [String]
+
+    enum CodingKeys: String, CodingKey {
+        case rawText = "raw_text"
+        case title
+        case likelyTopic = "likely_topic"
+        case confidence
+        case unreadableRegions = "unreadable_regions"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        rawText = try container.decode(String.self, forKey: .rawText)
+        title = try container.decodeIfPresent(String.self, forKey: .title)
+        likelyTopic = try container.decodeIfPresent(String.self, forKey: .likelyTopic)
+        confidence = try container.decodeIfPresent(String.self, forKey: .confidence)
+        unreadableRegions = try container.decodeIfPresent([String].self, forKey: .unreadableRegions) ?? []
+    }
+}
+
+private struct CleanedNotesResponse: Decodable {
+    let cleanedText: String
+    let changeSummary: String?
+
+    enum CodingKeys: String, CodingKey {
+        case cleanedText = "cleaned_text"
+        case changeSummary = "change_summary"
+    }
 }
 
 struct QAPair: Decodable {

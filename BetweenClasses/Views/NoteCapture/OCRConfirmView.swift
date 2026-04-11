@@ -4,6 +4,10 @@ import SwiftData
 struct OCRConfirmView: View {
     let imageData: Data
     let extractedText: String
+    let ocrSourceSummary: String?
+    let ocrConfidenceSummary: String?
+    let suggestedTopicName: String?
+    let unreadableRegions: [String]
     let onSave: (Note) -> Void
     /// When non-nil, a "Save & Capture Another" button is shown. Caller should
     /// dismiss the sheet and return to the camera when this fires.
@@ -15,17 +19,42 @@ struct OCRConfirmView: View {
 
     @State private var editedText: String
     @State private var selectedSubject: Subject?
+    @State private var selectedExistingTopic: String = ""
+    @State private var customTopicName: String = ""
     @State private var isSaving = false
+    @State private var isCleaningNotes = false
+    @State private var cleanupSummary: String?
+    @State private var cleanupError: String?
 
     init(imageData: Data,
          extractedText: String,
+         ocrSourceSummary: String? = nil,
+         ocrConfidenceSummary: String? = nil,
+         suggestedTopicName: String? = nil,
+         unreadableRegions: [String] = [],
          onSave: @escaping (Note) -> Void,
          onCaptureAnother: (() -> Void)? = nil) {
         self.imageData = imageData
         self.extractedText = extractedText
+        self.ocrSourceSummary = ocrSourceSummary
+        self.ocrConfidenceSummary = ocrConfidenceSummary
+        self.suggestedTopicName = suggestedTopicName
+        self.unreadableRegions = unreadableRegions
         self.onSave = onSave
         self.onCaptureAnother = onCaptureAnother
         self._editedText = State(initialValue: extractedText)
+    }
+
+    private var existingTopics: [String] {
+        selectedSubject?.topicNames ?? []
+    }
+
+    private var resolvedTopicName: String {
+        let custom = customTopicName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !custom.isEmpty { return custom }
+        let existing = selectedExistingTopic.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !existing.isEmpty { return existing }
+        return "Unsorted"
     }
 
     var body: some View {
@@ -52,12 +81,75 @@ struct OCRConfirmView: View {
                             Spacer()
                         }
 
+                        if ocrSourceSummary != nil || ocrConfidenceSummary != nil || !unreadableRegions.isEmpty {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("OCR")
+                                    .bcCaption()
+                                    .foregroundStyle(Color.textSecond)
+                                    .textCase(.uppercase)
+
+                                VStack(alignment: .leading, spacing: 6) {
+                                    if let ocrSourceSummary {
+                                        Text("Source: \(ocrSourceSummary)")
+                                            .bcBody()
+                                            .foregroundStyle(Color.textPrimary)
+                                    }
+                                    if let ocrConfidenceSummary {
+                                        Text(ocrConfidenceSummary)
+                                            .font(.system(size: 12, weight: .medium))
+                                            .foregroundStyle(Color.textTertiary)
+                                    }
+                                    if !unreadableRegions.isEmpty {
+                                        Text("Unreadable bits: \(unreadableRegions.prefix(2).joined(separator: " • "))")
+                                            .font(.system(size: 12, weight: .medium))
+                                            .foregroundStyle(Color.textTertiary)
+                                    }
+                                }
+                                .padding(16)
+                                .glassCard(cornerRadius: 12)
+                            }
+                        }
+
                         // Extracted text editor
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("Extracted Text")
-                                .bcCaption()
-                                .foregroundStyle(Color.textSecond)
-                                .textCase(.uppercase)
+                            HStack {
+                                Text("Extracted Text")
+                                    .bcCaption()
+                                    .foregroundStyle(Color.textSecond)
+                                    .textCase(.uppercase)
+                                Spacer()
+                                Button {
+                                    cleanUpNotes()
+                                } label: {
+                                    HStack(spacing: 6) {
+                                        if isCleaningNotes {
+                                            ProgressView()
+                                                .tint(Color.textSecond)
+                                                .scaleEffect(0.8)
+                                        } else {
+                                            Image(systemName: "wand.and.stars")
+                                                .font(.system(size: 12, weight: .semibold))
+                                        }
+                                        Text(isCleaningNotes ? "Cleaning…" : "Clean up notes")
+                                            .font(.system(size: 12, weight: .semibold))
+                                    }
+                                    .foregroundStyle(Color.textSecond)
+                                }
+                                .buttonStyle(.plain)
+                                .disabled(isCleaningNotes || editedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                            }
+
+                            if let cleanupSummary {
+                                Text(cleanupSummary)
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundStyle(Color.textTertiary)
+                            }
+
+                            if let cleanupError {
+                                Text(cleanupError)
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundStyle(.red.opacity(0.85))
+                            }
 
                             TextEditor(text: $editedText)
                                 .bcBody()
@@ -99,6 +191,70 @@ struct OCRConfirmView: View {
                                 .padding(.vertical, 14)
                                 .glassCard(cornerRadius: 12)
                             }
+                        }
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text("Topic / Lecture")
+                                    .bcCaption()
+                                    .foregroundStyle(Color.textSecond)
+                                    .textCase(.uppercase)
+                                Spacer()
+                                if let suggestedTopicName,
+                                   !suggestedTopicName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                    Button("Use suggestion") {
+                                        customTopicName = suggestedTopicName
+                                        selectedExistingTopic = ""
+                                    }
+                                    .buttonStyle(.plain)
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundStyle(Color.textSecond)
+                                }
+                            }
+
+                            if !existingTopics.isEmpty {
+                                Menu {
+                                    Button("Use Unsorted") {
+                                        selectedExistingTopic = "Unsorted"
+                                        customTopicName = ""
+                                    }
+                                    ForEach(existingTopics, id: \.self) { topic in
+                                        Button(topic) {
+                                            selectedExistingTopic = topic
+                                            customTopicName = ""
+                                        }
+                                    }
+                                } label: {
+                                    HStack {
+                                        VStack(alignment: .leading, spacing: 4) {
+                                            Text(selectedExistingTopic.isEmpty ? "Pick existing topic" : selectedExistingTopic)
+                                                .bcBody()
+                                                .foregroundStyle(selectedExistingTopic.isEmpty ? Color.textSecond : Color.textPrimary)
+                                            Text("Reuse an existing lecture/topic")
+                                                .font(.system(size: 12, weight: .regular))
+                                                .foregroundStyle(Color.textTertiary)
+                                        }
+                                        Spacer()
+                                        Image(systemName: "chevron.down")
+                                            .foregroundStyle(Color.textSecond)
+                                            .font(.system(size: 12))
+                                    }
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 14)
+                                    .glassCard(cornerRadius: 12)
+                                }
+                            }
+
+                            TextField("New topic or lecture name", text: $customTopicName, prompt: Text("e.g. Chapter 4, Derivatives, Crusades Day 1"))
+                                .textInputAutocapitalization(.words)
+                                .autocorrectionDisabled()
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 14)
+                                .glassCard(cornerRadius: 12)
+
+                            Text("Saved as: \(resolvedTopicName)")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundStyle(Color.textTertiary)
                         }
 
                         // Primary save button
@@ -165,6 +321,43 @@ struct OCRConfirmView: View {
         }
         .onAppear {
             selectedSubject = subjects.first
+            selectedExistingTopic = subjects.first?.topicNames.first ?? ""
+            if let suggestedTopicName,
+               !suggestedTopicName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+               selectedExistingTopic.isEmpty {
+                customTopicName = suggestedTopicName
+            }
+        }
+        .onChange(of: selectedSubject?.id) { _, _ in
+            selectedExistingTopic = selectedSubject?.topicNames.first ?? ""
+            customTopicName = ""
+        }
+    }
+
+    // MARK: - Cleanup
+
+    private func cleanUpNotes() {
+        let current = editedText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !current.isEmpty, !isCleaningNotes else { return }
+
+        cleanupError = nil
+        cleanupSummary = nil
+        isCleaningNotes = true
+
+        Task {
+            do {
+                let result = try await GeminiService.cleanupNotes(currentText: current, imageData: imageData)
+                await MainActor.run {
+                    editedText = result.cleanedText
+                    cleanupSummary = result.changeSummary ?? "Cleaned spacing, OCR glitches, and formatting without changing meaning."
+                    isCleaningNotes = false
+                }
+            } catch {
+                await MainActor.run {
+                    cleanupError = "Couldn’t clean up notes right now."
+                    isCleaningNotes = false
+                }
+            }
         }
     }
 
@@ -174,24 +367,16 @@ struct OCRConfirmView: View {
         guard let subject = selectedSubject else { return }
         isSaving = true
 
-        let note = Note(imageData: imageData, extractedText: editedText, subjectID: subject.id)
+        let note = Note(
+            imageData: imageData,
+            extractedText: editedText,
+            subjectID: subject.id,
+            topicName: resolvedTopicName
+        )
         modelContext.insert(note)
         subject.notes.append(note)
 
         UINotificationFeedbackGenerator().notificationOccurred(.success)
-
-        // Pre-generate questions asynchronously (with fallback)
-        Task {
-            let questions = await GeminiService.generateQuestionsWithFallback(
-                from: editedText,
-                noteID: note.id
-            )
-            for q in questions {
-                modelContext.insert(q)
-                note.questions.append(q)
-            }
-            try? modelContext.save()
-        }
 
         try? modelContext.save()
         onSave(note)

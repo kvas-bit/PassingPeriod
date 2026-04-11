@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 struct CanvasService {
     private static var school: String {
@@ -33,10 +34,11 @@ struct CanvasService {
 
         let courses = try JSONDecoder().decode([CanvasCourse].self, from: data)
         return courses.map { course in
+            let resolvedName = course.courseCode ?? course.name
             Subject(
-                name: course.courseCode ?? course.name,
+                name: resolvedName,
                 instructor: "",
-                colorHex: "#FFFFFF",
+                colorHex: Color.generatedSubjectHex(for: resolvedName),
                 canvasID: String(course.id)
             )
         }

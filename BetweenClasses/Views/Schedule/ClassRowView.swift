@@ -2,7 +2,13 @@ import SwiftUI
 
 struct ClassRowView: View {
     let subject: Subject
+    @Environment(AppState.self) private var appState
     @State private var showDetail = false
+
+    private var subjectAccent: Color {
+        _ = appState.colorCodingEnabled
+        return subject.displayColor
+    }
 
     private var isFreeNow: Bool { subject.isFreeWindow }
     private var isHappeningNow: Bool {
@@ -13,7 +19,7 @@ struct ClassRowView: View {
         Button { showDetail = true } label: {
             HStack(spacing: 12) {
                 Circle()
-                    .fill(Color(hex: subject.colorHex))
+                    .fill(subjectAccent)
                     .frame(width: 8, height: 8)
 
                 VStack(alignment: .leading, spacing: 2) {
@@ -44,6 +50,10 @@ struct ClassRowView: View {
             .padding(.horizontal, BCSpacing.lg)
             .frame(maxWidth: .infinity, alignment: .leading)
             .glassCard(cornerRadius: BCRadius.card)
+            .overlay(
+                RoundedRectangle(cornerRadius: BCRadius.card, style: .continuous)
+                    .stroke(subjectAccent.opacity(0.24), lineWidth: 1)
+            )
         }
         .buttonStyle(.plain)
         .sheet(isPresented: $showDetail) {
@@ -168,7 +178,7 @@ private struct AddNoteSheet: View {
                         .glassCard(cornerRadius: 16)
                         .frame(maxHeight: .infinity)
 
-                    Text("Type or paste your class notes. The app will generate quiz questions from them.")
+                    Text("Type or paste your class notes. Quiz questions get generated only when you actually start a quiz.")
                         .bcCaption()
                         .foregroundStyle(Color.textTertiary)
                         .multilineTextAlignment(.center)
