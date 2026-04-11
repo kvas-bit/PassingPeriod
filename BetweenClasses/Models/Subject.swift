@@ -50,7 +50,9 @@ final class Subject {
     }
 
     var isFreeWindow: Bool {
-        guard let mins = minutesUntilNext else { return false }
-        return mins > 15
+        // Only meaningful if class is today and >15 min away
+        guard let todayMins = scheduleTimes.compactMap({ $0.minutesUntilToday() }).min()
+        else { return false }
+        return todayMins > 15
     }
 }
