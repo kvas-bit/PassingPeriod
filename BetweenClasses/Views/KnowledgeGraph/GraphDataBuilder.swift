@@ -50,7 +50,7 @@ enum GraphDataBuilder {
                     }.joined(separator: ",")
                     return "\(entry.topic){\(noteBits)}"
                 }.joined(separator: ";")
-                return "\(subject.id.uuidString):\(subject.name):\(subject.colorHex)[\(orderedTopics)]"
+                return "\(subject.id.uuidString):\(subject.name):\(subject.displayColorHex)[\(orderedTopics)]"
             }
             .joined(separator: "|")
     }
@@ -80,7 +80,7 @@ enum GraphDataBuilder {
                 type: .subject,
                 noteCount: subject.notes.count,
                 position: SCNVector3(sx, sy, sz),
-                tintHex: subject.colorHex,
+                tintHex: subject.displayColorHex,
                 subjectID: subject.id,
                 topicName: nil
             )
@@ -104,7 +104,7 @@ enum GraphDataBuilder {
                     type: .topic,
                     noteCount: entry.notes.count,
                     position: SCNVector3(sx + tx, sy + ty, sz + tz),
-                    tintHex: subject.colorHex,
+                    tintHex: subject.topicColorHex(for: entry.topic),
                     subjectID: subject.id,
                     topicName: entry.topic
                 )
@@ -126,7 +126,7 @@ enum GraphDataBuilder {
                         type: .note,
                         noteCount: note.questions.count,
                         position: SCNVector3(sx + tx + nx, sy + ty + ny, sz + tz + nz),
-                        tintHex: subject.colorHex,
+                        tintHex: subject.noteColorHex(for: entry.topic),
                         subjectID: subject.id,
                         topicName: entry.topic
                     )

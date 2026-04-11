@@ -22,6 +22,10 @@ struct NoteCardView: View {
         subjects.first { $0.id == note.subjectID }?.name ?? "Unknown"
     }
 
+    private var subject: Subject? {
+        subjects.first { $0.id == note.subjectID }
+    }
+
     private var relativeTime: String {
         let seconds = Date().timeIntervalSince(note.createdAt)
         let minutes = Int(seconds / 60)
@@ -57,11 +61,11 @@ struct NoteCardView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(subjectName)
                             .bcCaption()
-                            .foregroundStyle(Color.textPrimary)
+                            .foregroundStyle(subject?.displayColor ?? Color.textPrimary)
                             .lineLimit(1)
                         Text(topicName)
                             .font(.system(size: 11, weight: .medium))
-                            .foregroundStyle(Color.textTertiary)
+                            .foregroundStyle(subject?.topicColor(for: topicName) ?? Color.textTertiary)
                             .lineLimit(1)
                     }
                     Spacer()
@@ -95,12 +99,16 @@ struct NoteCardView: View {
                         Capsule()
                             .fill(note.questions.isEmpty
                                   ? Color.white.opacity(0.05)
-                                  : Color.white.opacity(0.12))
+                                  : (subject?.noteColor(for: topicName).opacity(0.24) ?? Color.white.opacity(0.12)))
                     )
             }
             .padding(12)
             .frame(minWidth: 160, minHeight: 100, alignment: .topLeading)
             .glassCard(cornerRadius: BCRadius.card)
+            .overlay(
+                RoundedRectangle(cornerRadius: BCRadius.card, style: .continuous)
+                    .stroke((subject?.topicColor(for: topicName) ?? Color.white).opacity(0.18), lineWidth: 1)
+            )
         }
         .buttonStyle(PressButtonStyle())
         .sheet(isPresented: $showDetail) {

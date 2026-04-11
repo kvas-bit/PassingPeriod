@@ -12,7 +12,7 @@ struct SubjectCardView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
                         Circle()
-                            .fill(Color(hex: subject.colorHex))
+                            .fill(subject.displayColor)
                             .frame(width: 8, height: 8)
                         Text(subject.name)
                             .bcBody()
@@ -30,6 +30,10 @@ struct SubjectCardView: View {
                     }
                 }
             }
+            .overlay(
+                RoundedRectangle(cornerRadius: BCRadius.card, style: .continuous)
+                    .stroke(subject.displayColor.opacity(0.22), lineWidth: 1)
+            )
         }
         .buttonStyle(PressButtonStyle())
         .accessibilityLabel("Start quiz for \(subject.name)")
