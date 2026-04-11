@@ -5,6 +5,9 @@ struct OCRConfirmView: View {
     let imageData: Data
     let extractedText: String
     let onSave: (Note) -> Void
+    /// When non-nil, a "Save & Capture Another" button is shown. Caller should
+    /// dismiss the sheet and return to the camera when this fires.
+    var onCaptureAnother: (() -> Void)? = nil
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
@@ -14,10 +17,14 @@ struct OCRConfirmView: View {
     @State private var selectedSubject: Subject?
     @State private var isSaving = false
 
-    init(imageData: Data, extractedText: String, onSave: @escaping (Note) -> Void) {
+    init(imageData: Data,
+         extractedText: String,
+         onSave: @escaping (Note) -> Void,
+         onCaptureAnother: (() -> Void)? = nil) {
         self.imageData = imageData
         self.extractedText = extractedText
         self.onSave = onSave
+        self.onCaptureAnother = onCaptureAnother
         self._editedText = State(initialValue: extractedText)
     }
 
@@ -94,9 +101,9 @@ struct OCRConfirmView: View {
                             }
                         }
 
-                        // Save button
+                        // Primary save button
                         Button {
-                            saveNote()
+                            saveNote(captureAnother: false)
                         } label: {
                             Group {
                                 if isSaving {
@@ -115,6 +122,31 @@ struct OCRConfirmView: View {
                         }
                         .buttonStyle(.plain)
                         .disabled(selectedSubject == nil || isSaving)
+
+                        // "Save & Capture Another" — only shown when the caller supports it
+                        if onCaptureAnother != nil {
+                            Button {
+                                saveNote(captureAnother: true)
+                            } label: {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "camera.fill")
+                                        .font(.system(size: 14))
+                                    Text("Save & Capture Another")
+                                        .font(.system(size: 15, weight: .medium))
+                                }
+                                .foregroundStyle(Color.textPrimary)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 14)
+                                .background(Color.bgElevated, in: RoundedRectangle(cornerRadius: 14))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 14)
+                                        .stroke(Color.glassStroke, lineWidth: 1)
+                                )
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(selectedSubject == nil || isSaving)
+                            .opacity(selectedSubject == nil ? 0.4 : 1)
+                        }
 
                         Spacer(minLength: 40)
                     }
@@ -136,7 +168,9 @@ struct OCRConfirmView: View {
         }
     }
 
-    private func saveNote() {
+    // MARK: - Save
+
+    private func saveNote(captureAnother: Bool) {
         guard let subject = selectedSubject else { return }
         isSaving = true
 
@@ -146,21 +180,29 @@ struct OCRConfirmView: View {
 
         UINotificationFeedbackGenerator().notificationOccurred(.success)
 
-        // Pre-generate questions asynchronously
+        // Pre-generate questions asynchronously (with fallback)
         Task {
-            if let questions = try? await GeminiService.generateQuestions(from: editedText, noteID: note.id) {
-                for q in questions {
-                    modelContext.insert(q)
-                    note.questions.append(q)
-                }
-                try? modelContext.save()
+            let questions = await GeminiService.generateQuestionsWithFallback(
+                from: editedText,
+                noteID: note.id
+            )
+            for q in questions {
+                modelContext.insert(q)
+                note.questions.append(q)
             }
+            try? modelContext.save()
         }
 
         try? modelContext.save()
         onSave(note)
 
         isSaving = false
-        dismiss()
+
+        if captureAnother, let handler = onCaptureAnother {
+            dismiss()
+            handler()
+        } else {
+            dismiss()
+        }
     }
 }
