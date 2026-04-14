@@ -16,4 +16,11 @@ docs/superpowers
 .DS_Store
 
 # Xcode / local build products (never commit)
+DerivedData/
 .derivedData/
+*.xcuserstate
+xcuserdata/
+**/xcuserdata/
+
+# SwiftPM
+.build/
