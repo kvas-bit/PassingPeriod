@@ -23,13 +23,27 @@ final class ElevenLabsService: NSObject {
         (try? KeychainService.retrieve(KeychainKey.elevenLabsKey)) ?? ""
     }
 
+    // MARK: - Network configuration
+    // Use a dedicated session with explicit timeouts (30 s request, 60 s resource).
+    // Without this, URLSession defaults to ~60 s / 180 s which can cause long waits
+    // on slow connectivity before the error surfaces.
+    private static let sessionConfig: URLSessionConfiguration = {
+        let cfg = URLSessionConfiguration.default
+        cfg.timeoutIntervalForRequest  = 30
+        cfg.timeoutIntervalForResource = 60
+        return cfg
+    }()
+    private let session = URLSession(configuration: Self.sessionConfig)
+
     func speak(_ text: String) async throws {
         // ElevenLabs API keys MUST be sent via Authorization header, NOT in the URL.
         // The API key identifies the user account; placing it in a URL exposes it in logs,
         // proxies, and browser history. The header approach is per ElevenLabs API docs.
         guard !apiKey.isEmpty else { throw ElevenLabsError.notConfigured }
 
-        let url = URL(string: "\(endpoint)/\(voiceID)")!
+        guard let url = URL(string: "\(endpoint)/\(voiceID)") else {
+            throw ElevenLabsError.httpError(statusCode: -1, reason: "Invalid URL")
+        }
         var req = URLRequest(url: url)
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -44,9 +58,18 @@ final class ElevenLabsService: NSObject {
         ]
         req.httpBody = try JSONSerialization.data(withJSONObject: body)
 
-        let (data, response) = try await URLSession.shared.data(for: req)
-        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
-            throw ElevenLabsError.httpError(statusCode: (response as? HTTPURLResponse)?.statusCode ?? -1)
+        let (data, response) = try await session.data(for: req)
+
+        guard let http = response as? HTTPURLResponse else {
+            throw ElevenLabsError.httpError(statusCode: -1, reason: "Non-HTTP response")
+        }
+
+        switch http.statusCode {
+        case 200..<300: break
+        case 401:       throw ElevenLabsError.httpError(statusCode: 401, reason: "Invalid API key")
+        case 429:       throw ElevenLabsError.httpError(statusCode: 429, reason: "Rate limited")
+        case 500..<600: throw ElevenLabsError.httpError(statusCode: http.statusCode, reason: "Server error")
+        default:        throw ElevenLabsError.httpError(statusCode: http.statusCode, reason: nil)
         }
 
         try await playAudio(data: data)
@@ -54,12 +77,23 @@ final class ElevenLabsService: NSObject {
 
     private func playAudio(data: Data) async throws {
         let tmp = FileManager.default.temporaryDirectory.appendingPathComponent("bc_tts_\(UUID().uuidString).mp3")
-        try data.write(to: tmp)
+        do {
+            try data.write(to: tmp)
+        } catch {
+            throw ElevenLabsError.playbackError
+        }
 
-        try AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .default, options: [.allowBluetooth, .defaultToSpeaker])
-        try AVAudioSession.sharedInstance().setActive(true)
+        do {
+            try AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .default, options: [.allowBluetooth, .defaultToSpeaker])
+            try AVAudioSession.sharedInstance().setActive(true)
+        } catch {
+            throw ElevenLabsError.playbackError
+        }
 
-        player = try AVAudioPlayer(contentsOf: tmp)
+        guard let p = try? AVAudioPlayer(contentsOf: tmp) else {
+            throw ElevenLabsError.playbackError
+        }
+        player = p
         player?.delegate = self
         player?.isMeteringEnabled = true
         player?.play()
@@ -114,15 +148,17 @@ extension ElevenLabsService: AVAudioPlayerDelegate {
 
 enum ElevenLabsError: Error, LocalizedError {
     case notConfigured
-    case httpError(statusCode: Int)
+    case httpError(statusCode: Int, reason: String?)
     case playbackError
 
     var errorDescription: String? {
         switch self {
         case .notConfigured:
             return "ElevenLabs API key not configured. Add it in Settings."
-        case .httpError(let code):
-            return "ElevenLabs request failed (HTTP \(code))."
+        case .httpError(let code, let reason):
+            return reason != nil
+                ? "ElevenLabs request failed (HTTP \(code)): \(reason!)"
+                : "ElevenLabs request failed (HTTP \(code))."
         case .playbackError:
             return "Audio playback failed."
         }
