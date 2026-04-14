@@ -142,7 +142,7 @@ struct VoiceQuizView: View {
                                 .bcBody()
                                 .foregroundStyle(Color.textSecond)
                         } else if hasNoteText {
-                            Text("Will generate questions from this study set")
+                            Text("Will generate questions from your notes")
                                 .bcBody()
                                 .foregroundStyle(Color.textSecond)
                         } else {
@@ -152,6 +152,7 @@ struct VoiceQuizView: View {
                         }
                     }
 
+                    // Error banner (e.g. API key missing from a prior attempt)
                     if let err = manager.errorMessage {
                         HStack(spacing: 8) {
                             Image(systemName: "exclamationmark.triangle.fill")
@@ -420,6 +421,7 @@ struct VoiceQuizView: View {
                 Divider()
                     .background(Color.glassStroke)
 
+                // Question text — always visible
                 VStack(spacing: 8) {
                     if let q = manager.currentQuestion {
                         Text(q.question)
@@ -437,6 +439,7 @@ struct VoiceQuizView: View {
                             .padding(28)
                     }
 
+                    // State label inside card (evaluating / feedback text)
                     if case .evaluating = manager.state {
                         Text("Evaluating your answer…")
                             .bcCaption()
