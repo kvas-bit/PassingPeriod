@@ -23,7 +23,7 @@ struct ContentRootView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .safeAreaInset(placement: .bottom, spacing: 0) {
+        .safeAreaInset(edge: .bottom, spacing: 0) {
             TabBarView()
         }
     }

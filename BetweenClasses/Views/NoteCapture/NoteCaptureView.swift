@@ -260,6 +260,10 @@ struct CameraPreviewView: UIViewRepresentable {
         return view
     }
 
+    static func dismantleUIView(_ uiView: CameraView, coordinator: Coordinator) {
+        uiView.stopSession()
+    }
+
     func updateUIView(_ uiView: CameraView, context: Context) {
         if captureRequested {
             uiView.capturePhoto()
@@ -282,6 +286,11 @@ final class CameraView: UIView {
     override func layoutSubviews() {
         super.layoutSubviews()
         previewLayer?.frame = bounds
+    }
+
+    func stopSession() {
+        session?.stopRunning()
+        session = nil
     }
 
     func startSession() {

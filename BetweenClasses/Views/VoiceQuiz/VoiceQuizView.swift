@@ -35,11 +35,12 @@ struct VoiceQuizView: View {
                         appState.selectedTab = .home
                         manager.state = .idle
                     })
+                    .onAppear { appState.recordSession() }
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                 } else if case .noContent = manager.state {
                     noContentView
                         .transition(.opacity)
-                } else if case .idle = manager.state || case .preparing = manager.state {
+                } else if manager.state == .idle || manager.state == .preparing {
                     readyView
                         .transition(.opacity)
                 } else {

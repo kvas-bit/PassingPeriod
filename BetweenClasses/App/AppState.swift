@@ -75,10 +75,13 @@ final class AppState {
 
     func recordSession() {
         checkMidnightReset()
+        // Only extend the streak on the very first session of each day
+        if sessionsToday == 0 {
+            quizStreak += 1
+            UserDefaults.standard.set(quizStreak, forKey: "bc_streak")
+        }
         sessionsToday += 1
-        quizStreak += 1
         UserDefaults.standard.set(sessionsToday, forKey: "bc_sessions_today")
-        UserDefaults.standard.set(quizStreak, forKey: "bc_streak")
     }
 
     func startQuiz(for subject: Subject) {

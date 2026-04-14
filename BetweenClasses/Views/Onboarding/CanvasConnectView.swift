@@ -26,6 +26,9 @@ struct CanvasConnectView: View {
                         sectionHeader("Canvas", icon: "graduationcap.fill")
 
                         inputField(label: "School domain", placeholder: "e.g. berkeley or canvas.berkeley.edu", text: $school)
+                        if let schoolErr = schoolError {
+                            validationHint(schoolErr, icon: "exclamationmark.circle.fill")
+                        }
                         secureField(label: "Access token", placeholder: "Paste from Canvas Settings", text: $token)
 
                         Text("Domain: just the subdomain (berkeley) or full hostname (canvas.school.edu). Token: Canvas → Account → Settings → Approved Integrations → New Access Token")
@@ -35,6 +38,9 @@ struct CanvasConnectView: View {
                         // iCal section
                         sectionHeader("iCal Schedule (optional)", icon: "calendar")
                         inputField(label: "iCal URL", placeholder: "webcal://...", text: $icalURL)
+                        if let icalErr = icalError {
+                            validationHint(icalErr, icon: "exclamationmark.circle.fill")
+                        }
                         Text("Export from your university portal or Blue.")
                             .bcCaption()
                             .foregroundStyle(Color.textTertiary)
@@ -48,13 +54,6 @@ struct CanvasConnectView: View {
                             Text(err)
                                 .bcCaption()
                                 .foregroundStyle(.red)
-                        }
-
-                        if let schoolErr = schoolError {
-                            validationHint(schoolErr, icon: "exclamationmark.circle.fill")
-                        }
-                        if let icalErr = icalError {
-                            validationHint(icalErr, icon: "exclamationmark.circle.fill")
                         }
 
                         // Save button

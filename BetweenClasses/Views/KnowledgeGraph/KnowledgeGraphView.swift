@@ -36,7 +36,7 @@ struct KnowledgeGraphView: View {
                 .animation(BCMotion.panelSpring, value: selectedNode?.id)
             }
         }
-        .safeAreaInset(placement: .top) {
+        .safeAreaInset(edge: .top) {
             BCChromeBar(title: "Knowledge graph") {
                 Button {
                     withAnimation(BCMotion.panelSpring) { selectedNode = nil }
