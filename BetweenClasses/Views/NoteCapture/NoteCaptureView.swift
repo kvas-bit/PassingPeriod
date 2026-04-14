@@ -282,36 +282,50 @@ final class CameraView: UIView {
     private var session: AVCaptureSession?
     private var previewLayer: AVCaptureVideoPreviewLayer?
     private var photoOutput = AVCapturePhotoOutput()
+    private let sessionQueue = DispatchQueue(label: "com.betweenclasses.cameraSessionQueue")
 
     override func layoutSubviews() {
         super.layoutSubviews()
         previewLayer?.frame = bounds
     }
 
-    func stopSession() {
-        session?.stopRunning()
-        session = nil
+    func startSession() {
+        sessionQueue.async { [weak self] in
+            guard let self = self, self.session == nil else { return }
+
+            let s = AVCaptureSession()
+            s.sessionPreset = .photo
+
+            guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back),
+                  let input = try? AVCaptureDeviceInput(device: device),
+                  s.canAddInput(input) else { return }
+
+            s.addInput(input)
+            if s.canAddOutput(self.photoOutput) { s.addOutput(self.photoOutput) }
+
+            self.session = s
+            s.startRunning()
+
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self, self.session != nil else { return }
+                let layer = AVCaptureVideoPreviewLayer(session: s)
+                layer.videoGravity = .resizeAspectFill
+                layer.frame = self.bounds
+                self.layer.addSublayer(layer)
+                self.previewLayer = layer
+            }
+        }
     }
 
-    func startSession() {
-        let s = AVCaptureSession()
-        s.sessionPreset = .photo
-
-        guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back),
-              let input = try? AVCaptureDeviceInput(device: device),
-              s.canAddInput(input) else { return }
-
-        s.addInput(input)
-        if s.canAddOutput(photoOutput) { s.addOutput(photoOutput) }
-
-        let layer = AVCaptureVideoPreviewLayer(session: s)
-        layer.videoGravity = .resizeAspectFill
-        layer.frame = bounds
-        self.layer.addSublayer(layer)
-        previewLayer = layer
-
-        DispatchQueue.global(qos: .userInitiated).async { s.startRunning() }
-        session = s
+    func stopSession() {
+        sessionQueue.async { [weak self] in
+            self?.session?.stopRunning()
+            self?.session = nil
+            DispatchQueue.main.async { [weak self] in
+                self?.previewLayer?.removeFromSuperlayer()
+                self?.previewLayer = nil
+            }
+        }
     }
 
     func capturePhoto() {
