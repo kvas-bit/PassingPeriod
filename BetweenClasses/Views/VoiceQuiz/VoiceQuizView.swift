@@ -27,11 +27,11 @@ struct VoiceQuizView: View {
 
             Group {
                 if case .complete(let score, let total) = manager.state {
-                    ScoreCard(score: score, total: total) {
+                    ScoreCard(score: score, total: total, onDone: {
                         appState.showQuiz = false
                         appState.selectedTab = .home
                         manager.state = .idle
-                    }
+                    })
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                 } else if case .noContent = manager.state {
                     noContentView
