@@ -4,8 +4,6 @@ struct TabBarView: View {
     @Environment(AppState.self) private var appState
 
     var body: some View {
-        @Bindable var appState = appState
-
         HStack(spacing: 0) {
             ForEach(AppTab.allCases, id: \.self) { tab in
                 TabBarItem(
@@ -57,9 +55,12 @@ private struct TabBarItem: View {
                 ZStack {
                     if isSelected {
                         RoundedRectangle(cornerRadius: 10)
-                            .fill(Color.white.opacity(0.1))
+                            .fill(Color.white.opacity(0.14))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 10)
+                                    .strokeBorder(Color.white.opacity(0.18), lineWidth: 1)
+                            }
                             .frame(width: 44, height: 28)
-                            .blur(radius: 4)
                     }
 
                     Image(systemName: tab.icon)

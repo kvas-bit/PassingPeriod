@@ -16,6 +16,7 @@ struct OCRConfirmView: View {
     @State private var editedText: String
     @State private var selectedSubject: Subject?
     @State private var isSaving = false
+    @State private var showDiscardConfirmation = false
 
     init(imageData: Data,
          extractedText: String,
@@ -157,11 +158,27 @@ struct OCRConfirmView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                        .foregroundStyle(Color.textSecond)
+                    Button("Cancel") {
+                        if editedText != extractedText {
+                            showDiscardConfirmation = true
+                        } else {
+                            dismiss()
+                        }
+                    }
+                    .foregroundStyle(Color.textSecond)
                 }
             }
             .toolbarBackground(Color.bgPrimary, for: .navigationBar)
+            .confirmationDialog(
+                "Discard changes?",
+                isPresented: $showDiscardConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button("Discard", role: .destructive) { dismiss() }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Your edits to the extracted text will be lost.")
+            }
         }
         .onAppear {
             selectedSubject = subjects.first

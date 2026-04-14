@@ -4,8 +4,6 @@ struct ContentRootView: View {
     @Environment(AppState.self) private var appState
 
     var body: some View {
-        @Bindable var appState = appState
-
         ZStack {
             Color.bgPrimary.ignoresSafeArea()
 
@@ -25,7 +23,7 @@ struct ContentRootView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
+        .safeAreaInset(placement: .bottom, spacing: 0) {
             TabBarView()
         }
     }

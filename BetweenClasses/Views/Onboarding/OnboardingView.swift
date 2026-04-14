@@ -66,14 +66,22 @@ struct OnboardingView: View {
                     }
                     .buttonStyle(.plain)
 
-                    Button {
-                        appState.completeOnboarding()
-                    } label: {
-                        Text("Skip for now")
-                            .bcBody()
-                            .foregroundStyle(Color.textSecond)
+                    // Clear visual separator between primary CTA and skip
+                    VStack(spacing: 0) {
+                        Rectangle()
+                            .fill(Color.white.opacity(0.08))
+                            .frame(height: 1)
+                            .padding(.horizontal, 20)
+                        Button {
+                            appState.completeOnboarding()
+                        } label: {
+                            Text("Skip for now")
+                                .bcBody()
+                                .foregroundStyle(Color.textSecond)
+                                .padding(.top, 14)
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                 }
                 .padding(.horizontal, 24)
                 .padding(.bottom, 52)

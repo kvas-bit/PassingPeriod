@@ -9,14 +9,17 @@ struct VoiceQuizView: View {
     @State private var appeared = false
 
     private var isListening: Bool {
-        if case .listening = manager.state { return true }
-        return false
+        switch manager.state {
+        case .preparing, .speaking, .listening: return true
+        default: return false
+        }
     }
 
     private var amplitude: Float {
         switch manager.state {
         case .speaking:   return manager.ttsAmplitude
         case .listening:  return manager.micAmplitude
+        case .preparing:  return 0.3
         default:          return 0
         }
     }
@@ -36,7 +39,7 @@ struct VoiceQuizView: View {
                 } else if case .noContent = manager.state {
                     noContentView
                         .transition(.opacity)
-                } else if case .idle = manager.state {
+                } else if case .idle = manager.state || case .preparing = manager.state {
                     readyView
                         .transition(.opacity)
                 } else {
@@ -87,7 +90,11 @@ struct VoiceQuizView: View {
                         }
                     }
 
-                    if let err = manager.errorMessage {
+                    if case .preparing = manager.state {
+                        Text("Getting ready…")
+                            .bcBody()
+                            .foregroundStyle(Color.textSecond)
+                    } else if let err = manager.errorMessage {
                         HStack(spacing: 8) {
                             Image(systemName: "exclamationmark.triangle.fill")
                                 .font(.system(size: 13))
@@ -103,6 +110,21 @@ struct VoiceQuizView: View {
                             RoundedRectangle(cornerRadius: BCRadius.control, style: .continuous)
                                 .strokeBorder(Color.white.opacity(0.12), lineWidth: 1)
                         )
+
+                        Button {
+                            manager.stop()
+                            if let subject = appState.quizSubject {
+                                Task { await manager.start(subject: subject) }
+                            }
+                        } label: {
+                            Text("Try again")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundStyle(.black)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                                .background(Color.white, in: RoundedRectangle(cornerRadius: 10))
+                        }
+                        .buttonStyle(.plain)
                     }
 
                     Button {

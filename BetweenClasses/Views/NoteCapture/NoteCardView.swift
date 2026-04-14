@@ -86,6 +86,7 @@ struct NoteCardView: View {
                                   ? Color.white.opacity(0.05)
                                   : Color.white.opacity(0.12))
                     )
+                    .accessibilityLabel(questionBadgeAccessibility)
             }
             .padding(12)
             .frame(minWidth: 160, minHeight: 100, alignment: .topLeading)
@@ -95,6 +96,12 @@ struct NoteCardView: View {
         .sheet(isPresented: $showDetail) {
             NoteDetailSheet(note: note, subjectName: subjectName)
         }
+        .accessibilityLabel("\(subjectName), \(relativeTime). \(previewText.isEmpty ? "No preview text" : previewText)")
+        .accessibilityHint("Opens note detail. Double tap to view.")
+    }
+
+    private var questionBadgeAccessibility: String {
+        note.questions.isEmpty ? "No quiz questions" : "\(note.questions.count) quiz question\(note.questions.count == 1 ? "" : "s")"
     }
 }
 

@@ -36,18 +36,23 @@ struct KnowledgeGraphView: View {
                 .animation(BCMotion.panelSpring, value: selectedNode?.id)
             }
         }
-        .safeAreaInset(edge: .top, spacing: BCSpacing.md) {
+        .safeAreaInset(placement: .top) {
             BCChromeBar(title: "Knowledge graph") {
-                if selectedNode != nil {
-                    Button("Clear") {
-                        withAnimation(BCMotion.panelSpring) { selectedNode = nil }
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(Color.textSecond)
-                    .accessibilityLabel("Clear selection")
+                Button {
+                    withAnimation(BCMotion.panelSpring) { selectedNode = nil }
+                } label: {
+                    Text(selectedNode != nil ? "Clear" : "")
+                        .bcCaption()
+                        .foregroundStyle(Color.textSecond)
                 }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Clear selection")
             }
             .padding(.horizontal, BCSpacing.gutter)
+            .padding(.top, BCSpacing.sm)
+            .padding(.bottom, BCSpacing.md)
+            .opacity(selectedNode != nil ? 1 : 0)
+            .clipped()
         }
         .onAppear {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { appeared = true }

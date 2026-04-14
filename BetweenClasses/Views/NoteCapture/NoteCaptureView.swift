@@ -8,15 +8,25 @@ struct NoteCaptureView: View {
     @State private var showConfirm = false
     @State private var showImagePicker = false
     @State private var captureRequested = false
+    @State private var cameraPermissionDenied = false
+    @State private var processingTask: Task<Void, Never>?
 
     var body: some View {
         ZStack(alignment: .bottom) {
             // Camera fills full screen edge-to-edge
-            CameraPreviewView(captureRequested: $captureRequested, onCapture: handleCapture)
-                .ignoresSafeArea()
+            Group {
+                if cameraPermissionDenied {
+                    cameraPermissionDeniedView
+                } else {
+                    CameraPreviewView(captureRequested: $captureRequested, onCapture: handleCapture)
+                        .ignoresSafeArea()
+                }
+            }
 
             // Controls float above tab bar — 83pt clears the custom tab bar on all iPhones
-            captureControls
+            if !cameraPermissionDenied {
+                captureControls
+            }
 
             // Processing overlay
             if isProcessing {
@@ -42,6 +52,8 @@ struct NoteCaptureView: View {
             }
         }
         .photosPicker(isPresented: $showImagePicker, onPick: handlePickedPhoto)
+        .onAppear { checkCameraPermission() }
+        .onDisappear { processingTask?.cancel() }
     }
 
     private var captureControls: some View {
@@ -60,7 +72,10 @@ struct NoteCaptureView: View {
 
             Spacer()
 
-            Button { captureRequested = true } label: {
+            Button {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                captureRequested = true
+            } label: {
                 ZStack {
                     Circle()
                         .strokeBorder(Color.white.opacity(0.25), lineWidth: 2)
@@ -89,7 +104,7 @@ struct NoteCaptureView: View {
                 .ignoresSafeArea()
                 .background(.ultraThinMaterial)
 
-            VStack(spacing: 16) {
+            VStack(spacing: 20) {
                 ProgressView()
                     .tint(.white)
                     .scaleEffect(1.4)
@@ -97,7 +112,66 @@ struct NoteCaptureView: View {
                 Text("Extracting concepts…")
                     .bcBody()
                     .foregroundStyle(Color.textSecond)
+
+                Button("Cancel") {
+                    processingTask?.cancel()
+                    isProcessing = false
+                    capturedImage = nil
+                    extractedText = ""
+                }
+                .buttonStyle(BCGhostButtonStyle())
+                .padding(.top, 4)
             }
+        }
+    }
+
+    private var cameraPermissionDeniedView: some View {
+        VStack(spacing: 20) {
+            Spacer()
+
+            Image(systemName: "camera.fill")
+                .font(.system(size: 48, weight: .thin))
+                .foregroundStyle(Color.textTertiary)
+
+            Text("Camera access needed")
+                .bcHeadline()
+                .foregroundStyle(Color.textPrimary)
+
+            Text("Between Classes needs your camera to capture notes. Enable it in Settings.")
+                .bcBody()
+                .foregroundStyle(Color.textSecond)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 40)
+
+            Button("Open Settings") {
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
+                }
+            }
+            .buttonStyle(BCPrimaryButtonStyle())
+            .padding(.horizontal, BCSpacing.xxl)
+            .padding(.top, 4)
+
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.bgPrimary)
+    }
+
+    private func checkCameraPermission() {
+        switch AVCaptureDevice.authorizationStatus(for: .video) {
+        case .authorized:
+            cameraPermissionDenied = false
+        case .notDetermined:
+            AVCaptureDevice.requestAccess(for: .video) { granted in
+                DispatchQueue.main.async {
+                    cameraPermissionDenied = !granted
+                }
+            }
+        case .denied, .restricted:
+            cameraPermissionDenied = true
+        @unknown default:
+            cameraPermissionDenied = true
         }
     }
 
@@ -105,15 +179,19 @@ struct NoteCaptureView: View {
         capturedImage = imageData
         isProcessing = true
 
-        Task {
+        processingTask = Task {
             do {
                 extractedText = try await VisionOCRService.extractText(from: imageData)
             } catch {
-                extractedText = ""
+                if !Task.isCancelled {
+                    extractedText = ""
+                }
             }
-            await MainActor.run {
-                isProcessing = false
-                showConfirm = true
+            if !Task.isCancelled {
+                await MainActor.run {
+                    isProcessing = false
+                    showConfirm = true
+                }
             }
         }
     }

@@ -4,6 +4,7 @@ import Observation
 
 enum QuizState: Equatable {
     case idle
+    case preparing
     case speaking
     case listening
     case evaluating
@@ -34,6 +35,9 @@ final class QuizSessionManager {
 
     func start(subject: Subject) async {
         errorMessage = nil
+        state = .preparing
+        statusLabel = "Getting ready…"
+
         var allQuestions = subject.notes.flatMap { $0.questions }
 
         // Issue A: fallback questions when notes have text but Gemini never ran

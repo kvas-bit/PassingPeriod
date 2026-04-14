@@ -43,6 +43,15 @@ struct GlassChip: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
         .glassCard(cornerRadius: BCRadius.chip)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(accessibilityLabel)
+    }
+
+    private var accessibilityLabel: String {
+        if let symbol = leadingSymbol {
+            return "\(symbol.replacingOccurrences(of: ".fill", with: "")): \(text)"
+        }
+        return text
     }
 }
 
@@ -57,5 +66,6 @@ struct WhitePill: View {
             .padding(.horizontal, 10)
             .padding(.vertical, 4)
             .background(Color.white, in: Capsule())
+            .accessibilityLabel(text)
     }
 }

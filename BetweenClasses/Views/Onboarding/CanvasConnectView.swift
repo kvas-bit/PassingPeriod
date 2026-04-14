@@ -11,6 +11,8 @@ struct CanvasConnectView: View {
     @State private var elevenLabsKey = ""
     @State private var isSaving = false
     @State private var error: String?
+    @State private var schoolError: String?
+    @State private var icalError: String?
 
     var body: some View {
         NavigationStack {
@@ -46,6 +48,13 @@ struct CanvasConnectView: View {
                             Text(err)
                                 .bcCaption()
                                 .foregroundStyle(.red)
+                        }
+
+                        if let schoolErr = schoolError {
+                            validationHint(schoolErr, icon: "exclamationmark.circle.fill")
+                        }
+                        if let icalErr = icalError {
+                            validationHint(icalErr, icon: "exclamationmark.circle.fill")
                         }
 
                         // Save button
@@ -104,6 +113,17 @@ struct CanvasConnectView: View {
         }
     }
 
+    private func validationHint(_ text: String, icon: String) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 11))
+            Text(text)
+                .bcCaption()
+        }
+        .foregroundStyle(.red)
+        .padding(.top, 2)
+    }
+
     private func inputField(label: String, placeholder: String, text: Binding<String>) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(label)
@@ -135,6 +155,32 @@ struct CanvasConnectView: View {
     }
 
     private func save() {
+        schoolError = nil
+        icalError = nil
+
+        // Validate school domain
+        if !school.isEmpty {
+            let trimmed = school.trimmingCharacters(in: .whitespacesAndNewlines)
+            // Must be alphanumeric with optional dots/hyphens
+            let validDomain = trimmed.range(of: "^[a-zA-Z0-9.-]+$", options: .regularExpression)
+            if validDomain == nil {
+                schoolError = "School domain can only contain letters, numbers, dots, and hyphens"
+                return
+            }
+        }
+
+        // Validate iCal URL format if provided
+        if !icalURL.isEmpty {
+            var urlString = icalURL.trimmingCharacters(in: .whitespacesAndNewlines)
+            if urlString.hasPrefix("webcal://") {
+                urlString = "https://" + urlString.dropFirst(9)
+            }
+            if URL(string: urlString) == nil {
+                icalError = "Enter a valid webcal or https URL"
+                return
+            }
+        }
+
         isSaving = true
         error = nil
 
@@ -149,8 +195,8 @@ struct CanvasConnectView: View {
             dismiss()
         } catch {
             self.error = error.localizedDescription
+            isSaving = false
         }
-        isSaving = false
     }
 }
 

@@ -29,6 +29,7 @@ struct ScheduleView: View {
                 ToolbarItem(placement: .topBarLeading) {
                     if !subjects.isEmpty {
                         Button {
+                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                             confirmDeleteAll = true
                         } label: {
                             Image(systemName: "trash")
@@ -39,6 +40,7 @@ struct ScheduleView: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
                         Task { await refresh() }
                     } label: {
                         Image(systemName: isRefreshing ? "arrow.clockwise.circle" : "arrow.clockwise")
@@ -150,7 +152,10 @@ struct ScheduleView: View {
             }
             try? modelContext.save()
         } catch CanvasError.notConfigured {
-        } catch {}
+            // Canvas not configured — silently skip
+        } catch {
+            // Log error but don't freeze UI
+        }
 
         if let stored = try? KeychainService.retrieve(KeychainKey.icalURL),
            !stored.isEmpty,

@@ -10,6 +10,7 @@ struct HomeView: View {
     @State private var appeared = false
     @State private var showIntegrations = false
     @State private var showAllNotes = false
+    @State private var isLoadingInitial = true
 
     private var nextSubject: Subject? {
         subjects
@@ -38,109 +39,22 @@ struct HomeView: View {
 
     var body: some View {
         ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 28) {
-
-                // MARK: Header
-                HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("\(greeting)")
-                            .bcDisplay()
-                            .foregroundStyle(Color.textPrimary)
-                        Text(dateString)
-                            .bcBody()
-                            .foregroundStyle(Color.textSecond)
-                    }
-                    Spacer()
-                    HStack(spacing: 8) {
-                        GlassChip(text: formattedDate())
-                        Button { showIntegrations = true } label: {
-                            Image(systemName: "link.circle.fill")
-                                .font(.system(size: 17))
-                                .foregroundStyle(Color.textSecond)
-                                .frame(width: 38, height: 38)
-                                .glassCard(cornerRadius: BCRadius.control)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Canvas and calendar")
-                        .accessibilityHint("Opens connections to sync your schedule")
-                    }
-                }
-                .padding(.top, 20)
-
-                // MARK: Next Class Card
-                if let subject = nextSubject {
-                    NextClassCard(subject: subject)
-                        .offset(y: appeared ? 0 : 20)
-                        .opacity(appeared ? 1 : 0)
-                        .animation(BCMotion.panelSpring.delay(0.05), value: appeared)
-                } else {
-                    EmptyNextClassCard()
-                        .offset(y: appeared ? 0 : 20)
-                        .opacity(appeared ? 1 : 0)
-                        .animation(BCMotion.panelSpring.delay(0.05), value: appeared)
-                }
-
-                // MARK: Recent Notes
-                if !notes.isEmpty {
-                    VStack(alignment: .leading, spacing: 12) {
-                        HStack(spacing: 8) {
-                            Text("RECENT NOTES · \(notes.count)")
-                                .bcCaption()
-                                .foregroundStyle(Color.textSecond)
-
-                            Spacer()
-
-                            Button {
-                                showAllNotes = true
-                            } label: {
-                                HStack(spacing: 4) {
-                                    Text("See all")
-                                        .bcCaption()
-                                        .foregroundStyle(Color.textSecond)
-                                    Image(systemName: "chevron.right")
-                                        .font(.system(size: 10, weight: .medium))
-                                        .foregroundStyle(Color.textSecond)
-                                }
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel("See all notes")
-                        }
-
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 12) {
-                                ForEach(Array(notes.prefix(10).enumerated()), id: \.element.id) { index, note in
-                                    NoteCardView(note: note, subjects: subjects)
-                                        .offset(y: appeared ? 0 : 20)
-                                        .opacity(appeared ? 1 : 0)
-                                        .animation(
-                                            BCMotion.panelSpring.delay(Double(index) * 0.06),
-                                            value: appeared
-                                        )
-                                }
-                            }
-                            .padding(.horizontal, 1)
-                        }
-                    }
-                } else {
-                    emptyNotesSection
-                }
-
-                // MARK: Quick Stats
-                HStack(spacing: 12) {
-                    GlassChip(text: "\(appState.quizStreak) day streak", leadingSymbol: "flame.fill")
-                    GlassChip(text: "\(appState.sessionsToday) sessions today", leadingSymbol: "waveform.path")
-                    Spacer()
-                }
-                .offset(y: appeared ? 0 : 20)
-                .opacity(appeared ? 1 : 0)
-                .animation(BCMotion.panelSpring.delay(0.15), value: appeared)
-
-                Spacer(minLength: 32)
+            if isLoadingInitial {
+                skeletonLoadingView
+            } else {
+                loadedContentView
             }
-            .padding(.horizontal, BCSpacing.gutter)
         }
         .background(Color.bgPrimary)
-        .onAppear { appeared = true }
+        .refreshable {
+            isLoadingInitial = false
+        }
+        .onAppear {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                isLoadingInitial = false
+                appeared = true
+            }
+        }
         .onDisappear { appeared = false }
         .sheet(isPresented: $showIntegrations) {
             CanvasConnectView()
@@ -149,6 +63,169 @@ struct HomeView: View {
             RecentNotesSheet()
         }
     }
+
+    // MARK: - Skeleton
+
+    private var skeletonLoadingView: some View {
+        VStack(alignment: .leading, spacing: 28) {
+            HStack {
+                VStack(alignment: .leading, spacing: 8) {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color.white.opacity(0.06))
+                        .frame(width: 140, height: 24)
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(Color.white.opacity(0.04))
+                        .frame(width: 80, height: 16)
+                }
+                Spacer()
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(Color.white.opacity(0.06))
+                    .frame(width: 80, height: 36)
+            }
+            .padding(.top, 20)
+
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.white.opacity(0.05))
+                .frame(height: 120)
+
+            VStack(alignment: .leading, spacing: 12) {
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(Color.white.opacity(0.06))
+                    .frame(width: 120, height: 12)
+
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 12) {
+                        ForEach(0..<3, id: \.self) { _ in
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color.white.opacity(0.05))
+                                .frame(width: 160, height: 100)
+                        }
+                    }
+                }
+            }
+
+            HStack(spacing: 12) {
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(Color.white.opacity(0.06))
+                    .frame(width: 130, height: 36)
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(Color.white.opacity(0.06))
+                    .frame(width: 140, height: 36)
+                Spacer()
+            }
+        }
+        .padding(.horizontal, BCSpacing.gutter)
+    }
+
+    // MARK: - Loaded Content
+
+    private var loadedContentView: some View {
+        VStack(alignment: .leading, spacing: 28) {
+
+            // Header
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(greeting)
+                        .bcDisplay()
+                        .foregroundStyle(Color.textPrimary)
+                    Text(dateString)
+                        .bcBody()
+                        .foregroundStyle(Color.textSecond)
+                }
+                Spacer()
+                HStack(spacing: 8) {
+                    GlassChip(text: formattedDate())
+                    Button {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        showIntegrations = true
+                    } label: {
+                        Image(systemName: "link.circle.fill")
+                            .font(.system(size: 17))
+                            .foregroundStyle(Color.textSecond)
+                            .frame(width: 38, height: 38)
+                            .glassCard(cornerRadius: BCRadius.control)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Canvas and calendar")
+                    .accessibilityHint("Opens connections to sync your schedule")
+                }
+            }
+            .padding(.top, 20)
+
+            // Next Class Card
+            if let subject = nextSubject {
+                NextClassCard(subject: subject)
+                    .offset(y: appeared ? 0 : 20)
+                    .opacity(appeared ? 1 : 0)
+                    .animation(BCMotion.panelSpring.delay(0.05), value: appeared)
+            } else {
+                EmptyNextClassCard()
+                    .offset(y: appeared ? 0 : 20)
+                    .opacity(appeared ? 1 : 0)
+                    .animation(BCMotion.panelSpring.delay(0.05), value: appeared)
+            }
+
+            // Recent Notes
+            if !notes.isEmpty {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 8) {
+                        Text("RECENT NOTES · \(notes.count)")
+                            .bcCaption()
+                            .foregroundStyle(Color.textSecond)
+
+                        Spacer()
+
+                        Button {
+                            showAllNotes = true
+                        } label: {
+                            HStack(spacing: 4) {
+                                Text("See all")
+                                    .bcCaption()
+                                    .foregroundStyle(Color.textSecond)
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 10, weight: .medium))
+                                    .foregroundStyle(Color.textSecond)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("See all notes")
+                    }
+
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 12) {
+                            ForEach(Array(notes.prefix(10).enumerated()), id: \.element.id) { index, note in
+                                NoteCardView(note: note, subjects: subjects)
+                                    .offset(y: appeared ? 0 : 20)
+                                    .opacity(appeared ? 1 : 0)
+                                    .animation(
+                                        BCMotion.panelSpring.delay(Double(index) * 0.06),
+                                        value: appeared
+                                    )
+                            }
+                        }
+                        .padding(.horizontal, 1)
+                    }
+                }
+            } else {
+                emptyNotesSection
+            }
+
+            // Quick Stats
+            HStack(spacing: 12) {
+                GlassChip(text: "\(appState.quizStreak) day streak", leadingSymbol: "flame.fill")
+                GlassChip(text: "\(appState.sessionsToday) sessions today", leadingSymbol: "waveform.path")
+                Spacer()
+            }
+            .offset(y: appeared ? 0 : 20)
+            .opacity(appeared ? 1 : 0)
+            .animation(BCMotion.panelSpring.delay(0.15), value: appeared)
+
+            Spacer(minLength: 32)
+        }
+        .padding(.horizontal, BCSpacing.gutter)
+    }
+
+    // MARK: - Empty Notes
 
     private var emptyNotesSection: some View {
         VStack(alignment: .leading, spacing: BCSpacing.md) {
@@ -168,6 +245,7 @@ struct HomeView: View {
                         .bcBody()
                         .foregroundStyle(Color.textSecond)
                     Button {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
                         appState.selectedTab = .capture
                     } label: {
                         Text("Open capture")

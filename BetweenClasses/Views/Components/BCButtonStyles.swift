@@ -13,9 +13,9 @@ struct BCPrimaryButtonStyle: ButtonStyle {
             .padding(.vertical, 16)
             .background(
                 RoundedRectangle(cornerRadius: BCRadius.control, style: .continuous)
-                    .fill(Color.white.opacity(isEnabled ? 1 : 0.35))
+                    .fill(Color.white.opacity(isEnabled ? 1.0 : 0.35))
             )
-            .scaleEffect(configuration.isPressed ? 0.98 : 1)
+            .scaleEffect(configuration.isPressed && isEnabled ? 0.97 : 1.0)
             .animation(BCMotion.microSpring, value: configuration.isPressed)
     }
 }

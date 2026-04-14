@@ -11,15 +11,19 @@ struct RecentNotesSheet: View {
             ZStack {
                 Color.bgPrimary.ignoresSafeArea()
 
-                ScrollView(showsIndicators: false) {
-                    LazyVStack(spacing: BCSpacing.md) {
-                        ForEach(notes) { note in
-                            NoteCardView(note: note, subjects: subjects)
-                                .frame(maxWidth: .infinity, alignment: .leading)
+                if notes.isEmpty {
+                    emptyState
+                } else {
+                    ScrollView(showsIndicators: false) {
+                        LazyVStack(spacing: BCSpacing.md) {
+                            ForEach(notes) { note in
+                                NoteCardView(note: note, subjects: subjects)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
                         }
+                        .padding(.horizontal, BCSpacing.gutter)
+                        .padding(.vertical, BCSpacing.lg)
                     }
-                    .padding(.horizontal, BCSpacing.gutter)
-                    .padding(.vertical, BCSpacing.lg)
                 }
             }
             .navigationTitle("All notes")
@@ -31,6 +35,22 @@ struct RecentNotesSheet: View {
                 }
             }
             .toolbarBackground(Color.bgPrimary, for: .navigationBar)
+        }
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "doc.text")
+                .font(.system(size: 48, weight: .thin))
+                .foregroundStyle(Color.textTertiary)
+            Text("No notes yet")
+                .bcHeadline()
+                .foregroundStyle(Color.textPrimary)
+            Text("Capture your first note to see it here.")
+                .bcBody()
+                .foregroundStyle(Color.textSecond)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 40)
         }
     }
 }
