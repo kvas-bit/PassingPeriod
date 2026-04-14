@@ -8,7 +8,12 @@ final class ElevenLabsService: NSObject {
     var amplitude: Float = 0
     var isSpeaking: Bool = false
 
-    private let voiceID = "21m00Tcm4TlvDq8ikWAM" // Rachel — swap as needed
+    private var voiceID: String {
+        // Retrieve from Keychain; fall back to "Rachel" default only if not set.
+        // Users can change voice via Settings → Voice Selection.
+        (try? KeychainService.retrieve(KeychainKey.elevenLabsVoiceID)) ?? "21m00Tcm4TlvDq8ikWAM"
+    }
+
     private let endpoint = "https://api.elevenlabs.io/v1/text-to-speech"
 
     private var player: AVAudioPlayer?
@@ -19,14 +24,18 @@ final class ElevenLabsService: NSObject {
     }
 
     func speak(_ text: String) async throws {
+        // ElevenLabs API keys MUST be sent via Authorization header, NOT in the URL.
+        // The API key identifies the user account; placing it in a URL exposes it in logs,
+        // proxies, and browser history. The header approach is per ElevenLabs API docs.
         guard !apiKey.isEmpty else { throw ElevenLabsError.notConfigured }
 
         let url = URL(string: "\(endpoint)/\(voiceID)")!
         var req = URLRequest(url: url)
         req.httpMethod = "POST"
-        req.setValue(apiKey, forHTTPHeaderField: "xi-api-key")
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.setValue("audio/mpeg", forHTTPHeaderField: "Accept")
+        // xi-api-key goes in the header — never in the URL.
+        req.setValue(apiKey, forHTTPHeaderField: "xi-api-key")
 
         let body: [String: Any] = [
             "text": text,

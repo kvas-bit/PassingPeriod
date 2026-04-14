@@ -392,14 +392,17 @@ struct GeminiService {
         jsonMode: Bool,
         temperature: Double
     ) async throws -> String {
+        // Send API key via X-goog-api-key header instead of URL query param.
+        // URL query params leak into server access logs, proxies, and browser history.
         guard !apiKey.isEmpty else { throw GeminiError.noAPIKey }
 
-        let urlString = "\(endpoint(for: model))?key=\(apiKey)"
-        guard let url = URL(string: urlString) else { throw GeminiError.httpError }
+        guard let url = URL(string: endpoint) else { throw GeminiError.httpError }
 
         var req = URLRequest(url: url)
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        // Google Gemini API accepts the key as an HTTP header.
+        req.setValue(apiKey, forHTTPHeaderField: "X-goog-api-key")
 
         var generationConfig: [String: Any] = [
             "temperature": temperature
