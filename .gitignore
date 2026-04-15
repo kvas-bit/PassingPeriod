@@ -15,5 +15,8 @@ docs/superpowers
 # macOS
 .DS_Store
 
+# Git worktrees (local parallel checkouts — never commit)
+.worktrees/
+
 # Xcode / local build products (never commit)
 .derivedData/
