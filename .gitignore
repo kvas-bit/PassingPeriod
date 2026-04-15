@@ -9,9 +9,12 @@ STATE/
 TEMPLATES/
 .planning/
 CURSOR_HANDOFF.md
+.superpowers/
+docs/superpowers
 
 # macOS
 .DS_Store
 
 # Xcode / local build products (never commit)
 .derivedData/
+**/xcuserdata/
