@@ -20,3 +20,6 @@ docs/superpowers
 
 # Xcode / local build products (never commit)
 .derivedData/
+
+# Xcode user-specific data (machine-specific — never commit)
+**/xcuserdata/
