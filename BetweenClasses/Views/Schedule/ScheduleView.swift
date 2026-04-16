@@ -132,6 +132,7 @@ struct ScheduleView: View {
     private func clearAll() {
         for subject in subjects { modelContext.delete(subject) }
         try? modelContext.save()
+        LiveActivitySyncService.shared.sync(using: modelContext)
         Task { await refresh() }
     }
 
@@ -187,6 +188,8 @@ struct ScheduleView: View {
                 try? modelContext.save()
             }
         }
+
+        LiveActivitySyncService.shared.sync(using: modelContext)
     }
 
     // MARK: - Canvas whitelist helper

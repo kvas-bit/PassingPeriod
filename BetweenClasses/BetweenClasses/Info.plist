@@ -24,6 +24,8 @@
 	<string>Between Classes uses your mic to hear your answers.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>Between Classes transcribes your spoken answers.</string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 	<key>UIAppFonts</key>
 	<array/>
 	<key>UIBackgroundModes</key>

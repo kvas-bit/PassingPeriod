@@ -20,6 +20,7 @@ targets:
       - path: Services
       - path: Views
       - path: Extensions
+      - path: LiveActivitiesShared
     resources:
       - path: Resources
         optional: true
@@ -44,4 +45,24 @@ targets:
         NSSpeechRecognitionUsageDescription: "Between Classes transcribes your spoken answers."
         UIBackgroundModes:
           - audio
+        NSSupportsLiveActivities: true
         UIAppFonts: []
+
+  BetweenClassesLiveActivities:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: LiveActivityExtension
+      - path: LiveActivitiesShared
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.betweenclasses.app.liveactivities
+      INFOPLIST_FILE: BetweenClassesLiveActivities/Info.plist
+      SKIP_INSTALL: false
+      APPLICATION_EXTENSION_API_ONLY: true
+    info:
+      path: BetweenClassesLiveActivities/Info.plist
+      properties:
+        CFBundleDisplayName: BetweenClasses Live Activities
+        NSSupportsLiveActivities: true
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension

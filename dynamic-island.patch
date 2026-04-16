@@ -1,0 +1,472 @@
+From 877a0592139972f40e6ab256ff9d29219a9022f5 Mon Sep 17 00:00:00 2001
+From: skibbardly <skibbardly@users.noreply.github.com>
+Date: Thu, 16 Apr 2026 21:57:22 +0000
+Subject: [PATCH] feat: add dynamic island live activities with schedule sync
+
+---
+ BetweenClasses/App/BetweenClassesApp.swift    |  19 ++-
+ BetweenClasses/BetweenClasses/Info.plist      |   2 +
+ .../BetweenClassesLiveActivities/Info.plist   |  31 +++++
+ .../ClassLiveActivityAttributes.swift         |  37 ++++++
+ .../BetweenClassesLiveActivitiesBundle.swift  |   9 ++
+ .../BetweenClassesLiveActivityWidget.swift    |  90 ++++++++++++++
+ .../Services/LiveActivitySyncService.swift    | 112 ++++++++++++++++++
+ .../Views/Schedule/ScheduleView.swift         |   3 +
+ BetweenClasses/project.yml                    |  21 ++++
+ BetweenClasses/setup.md                       |   5 +-
+ 10 files changed, 327 insertions(+), 2 deletions(-)
+ create mode 100644 BetweenClasses/BetweenClassesLiveActivities/Info.plist
+ create mode 100644 BetweenClasses/LiveActivitiesShared/ClassLiveActivityAttributes.swift
+ create mode 100644 BetweenClasses/LiveActivityExtension/BetweenClassesLiveActivitiesBundle.swift
+ create mode 100644 BetweenClasses/LiveActivityExtension/BetweenClassesLiveActivityWidget.swift
+ create mode 100644 BetweenClasses/Services/LiveActivitySyncService.swift
+
+diff --git a/BetweenClasses/App/BetweenClassesApp.swift b/BetweenClasses/App/BetweenClassesApp.swift
+index b06ca8d..5288aef 100644
+--- a/BetweenClasses/App/BetweenClassesApp.swift
++++ b/BetweenClasses/App/BetweenClassesApp.swift
+@@ -4,6 +4,16 @@ import SwiftData
+ @main
+ struct BetweenClassesApp: App {
+     @State private var appState = AppState()
++    @Environment(\.scenePhase) private var scenePhase
++    private let modelContainer: ModelContainer
++
++    init() {
++        do {
++            modelContainer = try ModelContainer(for: Note.self, Subject.self, QuizSession.self, QuizQuestion.self)
++        } catch {
++            fatalError("Failed to create ModelContainer: \(error)")
++        }
++    }
+ 
+     var body: some Scene {
+         WindowGroup {
+@@ -16,7 +26,14 @@ struct BetweenClassesApp: App {
+             }
+             .environment(appState)
+             .preferredColorScheme(.dark)
++            .onChange(of: scenePhase) { _, newPhase in
++                guard newPhase == .active || newPhase == .background else { return }
++                LiveActivitySyncService.shared.sync(using: modelContainer.mainContext)
++            }
++            .task {
++                LiveActivitySyncService.shared.sync(using: modelContainer.mainContext)
++            }
+         }
+-        .modelContainer(for: [Note.self, Subject.self, QuizSession.self, QuizQuestion.self])
++        .modelContainer(modelContainer)
+     }
+ }
+diff --git a/BetweenClasses/BetweenClasses/Info.plist b/BetweenClasses/BetweenClasses/Info.plist
+index a866f0f..cd5501e 100644
+--- a/BetweenClasses/BetweenClasses/Info.plist
++++ b/BetweenClasses/BetweenClasses/Info.plist
+@@ -24,6 +24,8 @@
+ 	<string>Between Classes uses your mic to hear your answers.</string>
+ 	<key>NSSpeechRecognitionUsageDescription</key>
+ 	<string>Between Classes transcribes your spoken answers.</string>
++	<key>NSSupportsLiveActivities</key>
++	<true/>
+ 	<key>UIAppFonts</key>
+ 	<array/>
+ 	<key>UIBackgroundModes</key>
+diff --git a/BetweenClasses/BetweenClassesLiveActivities/Info.plist b/BetweenClasses/BetweenClassesLiveActivities/Info.plist
+new file mode 100644
+index 0000000..30ffbe3
+--- /dev/null
++++ b/BetweenClasses/BetweenClassesLiveActivities/Info.plist
+@@ -0,0 +1,31 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
++<plist version="1.0">
++<dict>
++    <key>CFBundleDevelopmentRegion</key>
++    <string>$(DEVELOPMENT_LANGUAGE)</string>
++    <key>CFBundleDisplayName</key>
++    <string>BetweenClasses Live Activities</string>
++    <key>CFBundleExecutable</key>
++    <string>$(EXECUTABLE_NAME)</string>
++    <key>CFBundleIdentifier</key>
++    <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
++    <key>CFBundleInfoDictionaryVersion</key>
++    <string>6.0</string>
++    <key>CFBundleName</key>
++    <string>$(PRODUCT_NAME)</string>
++    <key>CFBundlePackageType</key>
++    <string>XPC!</string>
++    <key>CFBundleShortVersionString</key>
++    <string>1.0</string>
++    <key>CFBundleVersion</key>
++    <string>1</string>
++    <key>NSExtension</key>
++    <dict>
++        <key>NSExtensionPointIdentifier</key>
++        <string>com.apple.widgetkit-extension</string>
++    </dict>
++    <key>NSSupportsLiveActivities</key>
++    <true/>
++</dict>
++</plist>
+diff --git a/BetweenClasses/LiveActivitiesShared/ClassLiveActivityAttributes.swift b/BetweenClasses/LiveActivitiesShared/ClassLiveActivityAttributes.swift
+new file mode 100644
+index 0000000..f5e0afe
+--- /dev/null
++++ b/BetweenClasses/LiveActivitiesShared/ClassLiveActivityAttributes.swift
+@@ -0,0 +1,37 @@
++import Foundation
++import ActivityKit
++
++struct ClassLiveActivityAttributes: ActivityAttributes {
++    public struct ContentState: Codable, Hashable {
++        var subjectName: String
++        var room: String
++        var status: SessionStatus
++        var startDate: Date
++        var endDate: Date
++        var lastSynced: Date
++    }
++
++    enum SessionStatus: String, Codable, Hashable {
++        case upcoming
++        case inSession
++        case betweenClasses
++
++        var label: String {
++            switch self {
++            case .upcoming: return "Up Next"
++            case .inSession: return "Live Now"
++            case .betweenClasses: return "Free Window"
++            }
++        }
++
++        var systemImage: String {
++            switch self {
++            case .upcoming: return "calendar.badge.clock"
++            case .inSession: return "dot.radiowaves.left.and.right"
++            case .betweenClasses: return "cup.and.saucer"
++            }
++        }
++    }
++
++    var ownerName: String
++}
+diff --git a/BetweenClasses/LiveActivityExtension/BetweenClassesLiveActivitiesBundle.swift b/BetweenClasses/LiveActivityExtension/BetweenClassesLiveActivitiesBundle.swift
+new file mode 100644
+index 0000000..84d1a8b
+--- /dev/null
++++ b/BetweenClasses/LiveActivityExtension/BetweenClassesLiveActivitiesBundle.swift
+@@ -0,0 +1,9 @@
++import WidgetKit
++import SwiftUI
++
++@main
++struct BetweenClassesLiveActivitiesBundle: WidgetBundle {
++    var body: some Widget {
++        BetweenClassesLiveActivityWidget()
++    }
++}
+diff --git a/BetweenClasses/LiveActivityExtension/BetweenClassesLiveActivityWidget.swift b/BetweenClasses/LiveActivityExtension/BetweenClassesLiveActivityWidget.swift
+new file mode 100644
+index 0000000..4c1c88d
+--- /dev/null
++++ b/BetweenClasses/LiveActivityExtension/BetweenClassesLiveActivityWidget.swift
+@@ -0,0 +1,90 @@
++import ActivityKit
++import WidgetKit
++import SwiftUI
++
++struct BetweenClassesLiveActivityWidget: Widget {
++    var body: some WidgetConfiguration {
++        ActivityConfiguration(for: ClassLiveActivityAttributes.self) { context in
++            LockScreenLiveActivityView(context: context)
++                .activityBackgroundTint(Color.black)
++                .activitySystemActionForegroundColor(Color.white)
++        } dynamicIsland: { context in
++            DynamicIsland {
++                DynamicIslandExpandedRegion(.leading) {
++                    Label(context.state.status.label, systemImage: context.state.status.systemImage)
++                        .font(.caption.weight(.semibold))
++                }
++
++                DynamicIslandExpandedRegion(.trailing) {
++                    Text(context.state.startDate, style: .time)
++                        .font(.caption.monospacedDigit())
++                }
++
++                DynamicIslandExpandedRegion(.bottom) {
++                    VStack(alignment: .leading, spacing: 4) {
++                        Text(context.state.subjectName)
++                            .font(.headline)
++                            .lineLimit(1)
++
++                        if context.state.status == .inSession {
++                            Text(timerInterval: context.state.startDate...context.state.endDate, countsDown: true)
++                                .font(.subheadline.monospacedDigit())
++                        } else {
++                            Text(timerInterval: Date()...context.state.startDate, countsDown: true)
++                                .font(.subheadline.monospacedDigit())
++                        }
++                    }
++                    .frame(maxWidth: .infinity, alignment: .leading)
++                }
++            } compactLeading: {
++                Image(systemName: context.state.status.systemImage)
++            } compactTrailing: {
++                if context.state.status == .inSession {
++                    Text(timerInterval: context.state.startDate...context.state.endDate, countsDown: true)
++                        .monospacedDigit()
++                } else {
++                    Text(timerInterval: Date()...context.state.startDate, countsDown: true)
++                        .monospacedDigit()
++                }
++            } minimal: {
++                Image(systemName: context.state.status.systemImage)
++            }
++        }
++    }
++}
++
++private struct LockScreenLiveActivityView: View {
++    let context: ActivityViewContext<ClassLiveActivityAttributes>
++
++    var body: some View {
++        VStack(alignment: .leading, spacing: 8) {
++            HStack {
++                Label(context.state.status.label, systemImage: context.state.status.systemImage)
++                    .font(.caption.weight(.semibold))
++                Spacer()
++                Text(context.state.startDate, style: .time)
++                    .font(.caption.monospacedDigit())
++            }
++
++            Text(context.state.subjectName)
++                .font(.headline)
++                .lineLimit(1)
++
++            if !context.state.room.isEmpty {
++                Text(context.state.room)
++                    .font(.caption)
++                    .foregroundStyle(.secondary)
++                    .lineLimit(1)
++            }
++
++            if context.state.status == .inSession {
++                Text(timerInterval: context.state.startDate...context.state.endDate, countsDown: true)
++                    .font(.title3.monospacedDigit().bold())
++            } else {
++                Text(timerInterval: Date()...context.state.startDate, countsDown: true)
++                    .font(.title3.monospacedDigit().bold())
++            }
++        }
++        .padding(.vertical, 6)
++    }
++}
+diff --git a/BetweenClasses/Services/LiveActivitySyncService.swift b/BetweenClasses/Services/LiveActivitySyncService.swift
+new file mode 100644
+index 0000000..c83042c
+--- /dev/null
++++ b/BetweenClasses/Services/LiveActivitySyncService.swift
+@@ -0,0 +1,112 @@
++import Foundation
++import SwiftData
++import ActivityKit
++
++@MainActor
++final class LiveActivitySyncService {
++    static let shared = LiveActivitySyncService()
++
++    private init() {}
++
++    func sync(using modelContext: ModelContext) {
++        guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
++
++        let descriptor = FetchDescriptor<Subject>(sortBy: [SortDescriptor(\Subject.name)])
++        guard let subjects = try? modelContext.fetch(descriptor) else { return }
++
++        guard let snapshot = nextSnapshot(from: subjects) else {
++            Task { await endAllActivities() }
++            return
++        }
++
++        Task {
++            await upsertActivity(with: snapshot)
++        }
++    }
++
++    func endAllActivities() async {
++        for activity in Activity<ClassLiveActivityAttributes>.activities {
++            await activity.end(activity.content, dismissalPolicy: .immediate)
++        }
++    }
++
++    private func upsertActivity(with state: ClassLiveActivityAttributes.ContentState) async {
++        let content = ActivityContent(state: state, staleDate: state.endDate)
++
++        if let existing = Activity<ClassLiveActivityAttributes>.activities.first {
++            await existing.update(content)
++            return
++        }
++
++        let attributes = ClassLiveActivityAttributes(ownerName: "Ishan")
++        _ = try? Activity.request(attributes: attributes, content: content)
++    }
++
++    private func nextSnapshot(from subjects: [Subject]) -> ClassLiveActivityAttributes.ContentState? {
++        let now = Date()
++        let schedule = subjects.flatMap { subject in
++            subject.scheduleTimes.compactMap { classTime in
++                concreteSession(for: classTime, subjectName: subject.name, now: now)
++            }
++        }
++
++        if let current = schedule.first(where: { $0.startDate <= now && now < $0.endDate }) {
++            return ClassLiveActivityAttributes.ContentState(
++                subjectName: current.subjectName,
++                room: current.room,
++                status: .inSession,
++                startDate: current.startDate,
++                endDate: current.endDate,
++                lastSynced: now
++            )
++        }
++
++        guard let upcoming = schedule
++            .filter({ $0.startDate > now })
++            .sorted(by: { $0.startDate < $1.startDate })
++            .first else { return nil }
++
++        let status: ClassLiveActivityAttributes.SessionStatus =
++            upcoming.startDate.timeIntervalSince(now) <= (30 * 60) ? .upcoming : .betweenClasses
++
++        return ClassLiveActivityAttributes.ContentState(
++            subjectName: upcoming.subjectName,
++            room: upcoming.room,
++            status: status,
++            startDate: upcoming.startDate,
++            endDate: upcoming.endDate,
++            lastSynced: now
++        )
++    }
++
++    private func concreteSession(for classTime: ClassTime, subjectName: String, now: Date) -> SessionSnapshot? {
++        let calendar = Calendar.current
++        let currentWeekday = calendar.component(.weekday, from: now)
++        let minutesNow = calendar.component(.hour, from: now) * 60 + calendar.component(.minute, from: now)
++        let classStartMins = classTime.startHour * 60 + classTime.startMin
++
++        for daysAhead in 0...7 {
++            let day = ((currentWeekday - 1 + daysAhead) % 7) + 1
++            guard day == classTime.weekday else { continue }
++
++            guard let date = calendar.date(byAdding: .day, value: daysAhead, to: now),
++                  let dayStart = calendar.dateInterval(of: .day, for: date)?.start else { continue }
++
++            let startDate = calendar.date(byAdding: .minute, value: classStartMins, to: dayStart) ?? now
++            let endDate = calendar.date(byAdding: .minute, value: classTime.endHour * 60 + classTime.endMin, to: dayStart) ?? startDate
++
++            if daysAhead == 0 && classStartMins < minutesNow && now > endDate { continue }
++
++            return SessionSnapshot(subjectName: subjectName, room: classTime.room, startDate: startDate, endDate: endDate)
++        }
++
++        return nil
++    }
++}
++
++private struct SessionSnapshot {
++    let subjectName: String
++    let room: String
++    let startDate: Date
++    let endDate: Date
++}
+diff --git a/BetweenClasses/Views/Schedule/ScheduleView.swift b/BetweenClasses/Views/Schedule/ScheduleView.swift
+index 889b78e..8688db0 100644
+--- a/BetweenClasses/Views/Schedule/ScheduleView.swift
++++ b/BetweenClasses/Views/Schedule/ScheduleView.swift
+@@ -132,6 +132,7 @@ struct ScheduleView: View {
+     private func clearAll() {
+         for subject in subjects { modelContext.delete(subject) }
+         try? modelContext.save()
++        LiveActivitySyncService.shared.sync(using: modelContext)
+         Task { await refresh() }
+     }
+ 
+@@ -187,6 +188,8 @@ struct ScheduleView: View {
+                 try? modelContext.save()
+             }
+         }
++
++        LiveActivitySyncService.shared.sync(using: modelContext)
+     }
+ 
+     // MARK: - Canvas whitelist helper
+diff --git a/BetweenClasses/project.yml b/BetweenClasses/project.yml
+index 4cdf570..dce6a17 100644
+--- a/BetweenClasses/project.yml
++++ b/BetweenClasses/project.yml
+@@ -20,6 +20,7 @@ targets:
+       - path: Services
+       - path: Views
+       - path: Extensions
++      - path: LiveActivitiesShared
+     resources:
+       - path: Resources
+         optional: true
+@@ -44,4 +45,24 @@ targets:
+         NSSpeechRecognitionUsageDescription: "Between Classes transcribes your spoken answers."
+         UIBackgroundModes:
+           - audio
++        NSSupportsLiveActivities: true
+         UIAppFonts: []
++
++  BetweenClassesLiveActivities:
++    type: app-extension
++    platform: iOS
++    sources:
++      - path: LiveActivityExtension
++      - path: LiveActivitiesShared
++    settings:
++      PRODUCT_BUNDLE_IDENTIFIER: com.betweenclasses.app.liveactivities
++      INFOPLIST_FILE: BetweenClassesLiveActivities/Info.plist
++      SKIP_INSTALL: false
++      APPLICATION_EXTENSION_API_ONLY: true
++    info:
++      path: BetweenClassesLiveActivities/Info.plist
++      properties:
++        CFBundleDisplayName: BetweenClasses Live Activities
++        NSSupportsLiveActivities: true
++        NSExtension:
++          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+diff --git a/BetweenClasses/setup.md b/BetweenClasses/setup.md
+index 9042be1..5aa794d 100644
+--- a/BetweenClasses/setup.md
++++ b/BetweenClasses/setup.md
+@@ -14,20 +14,23 @@ open BetweenClasses.xcodeproj
+ 1. File → New → Project → App
+ 2. Name: `BetweenClasses`, Interface: SwiftUI, Storage: SwiftData
+ 3. Minimum deployment: iOS 17
+-4. Drag all folders (`App/`, `Models/`, `Services/`, `Views/`, `Extensions/`) into the project navigator
++4. Drag all folders (`App/`, `Models/`, `Services/`, `Views/`, `Extensions/`, `LiveActivitiesShared/`, `LiveActivityExtension/`) into the project navigator
+ 5. Delete the auto-generated `ContentView.swift`
++6. Add a new **Widget Extension** target named `BetweenClassesLiveActivities` and include files from `LiveActivityExtension/` + `LiveActivitiesShared/`
+ 
+ ## Required Xcode settings (both options)
+ 
+ In the target's **Signing & Capabilities**:
+ - Add **Background Modes** → check `Audio, AirPlay, and Picture in Picture`
+ - Add **Keychain Sharing** (default app group is fine)
++- Add **Live Activities** for the app target
+ 
+ In **Info** tab (or Info.plist):
+ - `NSCameraUsageDescription` — "Between Classes needs your camera to capture notes."
+ - `NSMicrophoneUsageDescription` — "Between Classes uses your mic to hear your answers."
+ - `NSSpeechRecognitionUsageDescription` — "Between Classes transcribes your spoken answers."
+ - `UIBackgroundModes` → `audio`
++- `NSSupportsLiveActivities` → `YES`
+ 
+ ## API Keys (entered in app at first launch)
+ 
+-- 
+2.43.0
+
