@@ -23,3 +23,6 @@ docs/superpowers
 
 # Xcode user-specific data (machine-specific — never commit)
 **/xcuserdata/
+
+# Xcode workspace UI state directories
+**/*.xcworkspacedata/
