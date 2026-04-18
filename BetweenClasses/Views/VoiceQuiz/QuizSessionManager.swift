@@ -25,7 +25,7 @@ final class QuizSessionManager {
 
     private(set) var questions: [QuizQuestion] = []
     private var session: QuizSession?
-    private let tts = ElevenLabsService()
+    private let tts = GeminiTTSService()
     private let stt = SpeechService()
     private var modelContext: ModelContext?
     private var activeRunToken = UUID()
@@ -278,8 +278,9 @@ final class QuizSessionManager {
         }
         statusLabel = feedbackText
 
+        let toneTag = result.correct ? "[encouraging] " : "[supportive] "
         do {
-            try await tts.speak(feedbackText)
+            try await tts.speak(toneTag + feedbackText)
         } catch {}
 
         // Issue D: small delay after TTS before next question

@@ -23,7 +23,7 @@
 		99F93878373500438EC353C1 /* CanvasConnectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F70ABAB443B42BA38AC8777 /* CanvasConnectView.swift */; };
 		A221FDED6E3DFBB74676326D /* SpeechService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56FC1FB7B28E2D368BD544C8 /* SpeechService.swift */; };
 		A526B9B7975E01A63CE5E0C2 /* QuizSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A586598160DFEF2EDA7DFAE8 /* QuizSessionManager.swift */; };
-		A5E4A4B9F314496D2DE1C016 /* ElevenLabsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 538FD4BA93244DA5A925A564 /* ElevenLabsService.swift */; };
+		A5E4A4B9F314496D2DE1C016 /* GeminiTTSService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 538FD4BA93244DA5A925A564 /* GeminiTTSService.swift */; };
 		A796C87D0D3BDEEF2B633BA5 /* ContentRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDE5C0DCFA27F5B9AD9D2A7C /* ContentRootView.swift */; };
 		AB6099D9DDE0E4E263BC9798 /* Subject.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6EA6DADCE4B1CD530FF3798 /* Subject.swift */; };
 		AC0E938D802F771EAB097201 /* PulseRing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EC87857E9315BCEC1CC9BA8 /* PulseRing.swift */; };
@@ -57,7 +57,7 @@
 		4C2A38BB923C8A546F3B0235 /* ClassRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClassRowView.swift; sourceTree = "<group>"; };
 		4FE37DEFFFCF2AA0F82723BD /* BetweenClassesApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BetweenClassesApp.swift; sourceTree = "<group>"; };
 		51DF3FE52A885AFC1867F0CC /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
-		538FD4BA93244DA5A925A564 /* ElevenLabsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ElevenLabsService.swift; sourceTree = "<group>"; };
+		538FD4BA93244DA5A925A564 /* GeminiTTSService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiTTSService.swift; sourceTree = "<group>"; };
 		56FC1FB7B28E2D368BD544C8 /* SpeechService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechService.swift; sourceTree = "<group>"; };
 		582ACF91E8EB761847D3BEE5 /* QuizSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuizSession.swift; sourceTree = "<group>"; };
 		5F70ABAB443B42BA38AC8777 /* CanvasConnectView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CanvasConnectView.swift; sourceTree = "<group>"; };
@@ -177,7 +177,7 @@
 			isa = PBXGroup;
 			children = (
 				B3C948EDE201E6A07225D683 /* CanvasService.swift */,
-				538FD4BA93244DA5A925A564 /* ElevenLabsService.swift */,
+				538FD4BA93244DA5A925A564 /* GeminiTTSService.swift */,
 				3A68C47D01E9F7F8531FED1D /* GeminiService.swift */,
 				D6C94F976AB66319D0DCBA38 /* iCalService.swift */,
 				DEC7BB9355CCE1068E7CB528 /* KeychainService.swift */,
@@ -306,7 +306,7 @@
 				E6DA7C4E32AD268F5CFC5D0D /* ClassTime.swift in Sources */,
 				7D78D3097C24B8EAE8CDCA2F /* Color+Theme.swift in Sources */,
 				A796C87D0D3BDEEF2B633BA5 /* ContentRootView.swift in Sources */,
-				A5E4A4B9F314496D2DE1C016 /* ElevenLabsService.swift in Sources */,
+				A5E4A4B9F314496D2DE1C016 /* GeminiTTSService.swift in Sources */,
 				7B2397AD62E970BECC4BC8DF /* GeminiService.swift in Sources */,
 				103ED2AA5021B992F299678B /* GlassCard.swift in Sources */,
 				D4A5078F1A03E7CFF1E02276 /* GraphDataBuilder.swift in Sources */,

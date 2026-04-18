@@ -8,7 +8,6 @@ struct CanvasConnectView: View {
     @State private var token = ""
     @State private var icalURL = ""
     @State private var geminiKey = ""
-    @State private var elevenLabsKey = ""
     @State private var isSaving = false
     @State private var error: String?
 
@@ -40,7 +39,6 @@ struct CanvasConnectView: View {
                         // API Keys section
                         sectionHeader("API Keys", icon: "key.fill")
                         secureField(label: "Gemini API key", placeholder: "AIza...", text: $geminiKey)
-                        secureField(label: "ElevenLabs API key", placeholder: "sk_...", text: $elevenLabsKey)
 
                         sectionHeader("Appearance", icon: "paintpalette")
                         Toggle(isOn: Binding(
@@ -107,7 +105,6 @@ struct CanvasConnectView: View {
                 // Don't pre-fill secrets — show placeholder so user knows they're set
                 if KeychainService.exists(KeychainKey.canvasToken)    { token = "••••••••" }
                 if KeychainService.exists(KeychainKey.geminiKey)      { geminiKey = "••••••••" }
-                if KeychainService.exists(KeychainKey.elevenLabsKey)  { elevenLabsKey = "••••••••" }
             }
         }
     }
@@ -162,7 +159,6 @@ struct CanvasConnectView: View {
             if !token.isEmpty && token != "••••••••"          { try KeychainService.save(token, for: KeychainKey.canvasToken) }
             if !icalURL.isEmpty   { try KeychainService.save(icalURL, for: KeychainKey.icalURL) }
             if !geminiKey.isEmpty && geminiKey != "••••••••"  { try KeychainService.save(geminiKey, for: KeychainKey.geminiKey) }
-            if !elevenLabsKey.isEmpty && elevenLabsKey != "••••••••" { try KeychainService.save(elevenLabsKey, for: KeychainKey.elevenLabsKey) }
 
             appState.completeOnboarding()
             dismiss()

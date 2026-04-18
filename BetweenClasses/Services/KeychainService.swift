@@ -5,7 +5,6 @@ enum KeychainKey {
     static let canvasToken  = "bc_canvas_token"
     static let canvasSchool = "bc_canvas_school"
     static let icalURL      = "bc_ical_url"
-    static let elevenLabsKey = "bc_elevenlabs_key"
     static let geminiKey    = "bc_gemini_key"
 }
 
