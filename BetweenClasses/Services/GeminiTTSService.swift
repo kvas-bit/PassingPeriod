@@ -4,15 +4,20 @@ import Observation
 
 @Observable
 @MainActor
-final class GeminiTTSService: NSObject {
+final class GeminiTTSService {
     var amplitude: Float = 0
     var isSpeaking: Bool = false
 
-    private let endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-tts-preview:generateContent"
+    private let endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-tts-preview:streamGenerateContent"
+    private let audioFormat = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: 24000, channels: 1, interleaved: false)!
 
-    private var player: AVAudioPlayer?
-    private var displayLink: CADisplayLink?
-    private var onFinish: (() -> Void)?
+    private var engine: AVAudioEngine?
+    private var playerNode: AVAudioPlayerNode?
+    private var isMeteringTapInstalled = false
+
+    private var pendingBufferCount = 0
+    private var streamEnded = false
+    private var playbackContinuation: CheckedContinuation<Void, Never>?
 
     private var apiKey: String {
         (try? KeychainService.retrieve(KeychainKey.geminiKey)) ?? ""
@@ -21,7 +26,7 @@ final class GeminiTTSService: NSObject {
     func speak(_ text: String) async throws {
         guard !apiKey.isEmpty else { throw GeminiTTSError.notConfigured }
 
-        var req = URLRequest(url: URL(string: "\(endpoint)?key=\(apiKey)")!)
+        var req = URLRequest(url: URL(string: "\(endpoint)?key=\(apiKey)&alt=sse")!)
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
@@ -38,102 +43,132 @@ final class GeminiTTSService: NSObject {
         ]
         req.httpBody = try JSONSerialization.data(withJSONObject: body)
 
-        let (data, response) = try await URLSession.shared.data(for: req)
+        try setupAudioEngine()
+
+        let (asyncBytes, response) = try await URLSession.shared.bytes(for: req)
         guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+            teardownAudioEngine()
             throw GeminiTTSError.httpError(statusCode: (response as? HTTPURLResponse)?.statusCode ?? -1)
         }
 
-        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-        guard
-            let candidates = json?["candidates"] as? [[String: Any]],
-            let parts = (candidates.first?["content"] as? [String: Any])?["parts"] as? [[String: Any]],
-            let b64 = (parts.first?["inlineData"] as? [String: Any])?["data"] as? String,
-            let pcm = Data(base64Encoded: b64)
-        else {
-            throw GeminiTTSError.playbackError
+        isSpeaking = true
+        streamEnded = false
+        pendingBufferCount = 0
+
+        for try await line in asyncBytes.lines {
+            guard line.hasPrefix("data: ") else { continue }
+            let jsonStr = String(line.dropFirst(6))
+            guard jsonStr != "[DONE]",
+                  let jsonData = jsonStr.data(using: .utf8),
+                  let json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
+                  let candidates = json["candidates"] as? [[String: Any]],
+                  let parts = (candidates.first?["content"] as? [String: Any])?["parts"] as? [[String: Any]],
+                  let b64 = (parts.first?["inlineData"] as? [String: Any])?["data"] as? String,
+                  let pcm = Data(base64Encoded: b64)
+            else { continue }
+
+            scheduleChunk(pcm)
         }
 
-        try await playAudio(pcm: pcm)
-    }
+        streamEnded = true
 
-    private func playAudio(pcm: Data) async throws {
-        let wavData = makeWAV(pcm: pcm)
-
-        try AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .default, options: [.allowBluetooth, .defaultToSpeaker])
-        try AVAudioSession.sharedInstance().setActive(true)
-
-        player = try AVAudioPlayer(data: wavData, fileTypeHint: AVFileType.wav.rawValue)
-        player?.delegate = self
-        player?.isMeteringEnabled = true
-        player?.play()
-
-        isSpeaking = true
-        startMetering()
+        if pendingBufferCount == 0 {
+            finishPlayback()
+            return
+        }
 
         await withCheckedContinuation { continuation in
-            self.onFinish = { continuation.resume() }
+            playbackContinuation = continuation
         }
+    }
 
+    private func setupAudioEngine() throws {
+        teardownAudioEngine()
+
+        try AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .default, options: [.allowBluetoothHFP, .defaultToSpeaker])
+        try AVAudioSession.sharedInstance().setActive(true)
+
+        let engine = AVAudioEngine()
+        let playerNode = AVAudioPlayerNode()
+        engine.attach(playerNode)
+        engine.connect(playerNode, to: engine.mainMixerNode, format: audioFormat)
+
+        engine.mainMixerNode.installTap(onBus: 0, bufferSize: 1024, format: nil) { [weak self] buffer, _ in
+            guard let floatData = buffer.floatChannelData?[0] else { return }
+            let count = Int(buffer.frameLength)
+            var sumSquares: Float = 0
+            for i in 0..<count { sumSquares += floatData[i] * floatData[i] }
+            let rms = count > 0 ? sqrt(sumSquares / Float(count)) : 0
+            Task { @MainActor [weak self] in self?.amplitude = rms }
+        }
+        isMeteringTapInstalled = true
+
+        try engine.start()
+        playerNode.play()
+
+        self.engine = engine
+        self.playerNode = playerNode
+    }
+
+    private func teardownAudioEngine() {
+        if isMeteringTapInstalled {
+            engine?.mainMixerNode.removeTap(onBus: 0)
+            isMeteringTapInstalled = false
+        }
+        playerNode?.stop()
+        engine?.stop()
+        playerNode = nil
+        engine = nil
+    }
+
+    private func scheduleChunk(_ pcm: Data) {
+        guard let playerNode, let buffer = makePCMBuffer(from: pcm) else { return }
+        pendingBufferCount += 1
+        playerNode.scheduleBuffer(buffer, completionCallbackType: .dataPlayedBack) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.pendingBufferCount -= 1
+                if self.pendingBufferCount == 0 && self.streamEnded {
+                    let cont = self.playbackContinuation
+                    self.playbackContinuation = nil
+                    self.finishPlayback()
+                    cont?.resume()
+                }
+            }
+        }
+    }
+
+    private func makePCMBuffer(from pcmInt16Data: Data) -> AVAudioPCMBuffer? {
+        let frameCount = pcmInt16Data.count / 2
+        guard frameCount > 0,
+              let buffer = AVAudioPCMBuffer(pcmFormat: audioFormat, frameCapacity: AVAudioFrameCount(frameCount))
+        else { return nil }
+        buffer.frameLength = AVAudioFrameCount(frameCount)
+        guard let floatChannel = buffer.floatChannelData?[0] else { return nil }
+        pcmInt16Data.withUnsafeBytes { rawBytes in
+            guard let int16Ptr = rawBytes.baseAddress?.assumingMemoryBound(to: Int16.self) else { return }
+            for i in 0..<frameCount {
+                floatChannel[i] = Float(int16Ptr[i]) / 32768.0
+            }
+        }
+        return buffer
+    }
+
+    private func finishPlayback() {
+        guard engine != nil else { return }
+        isSpeaking = false
+        amplitude = 0
+        teardownAudioEngine()
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
-    }
-
-    private func makeWAV(pcm: Data) -> Data {
-        let sampleRate: UInt32 = 24000
-        let channels: UInt16 = 1
-        let bitsPerSample: UInt16 = 16
-        let byteRate = sampleRate * UInt32(channels) * UInt32(bitsPerSample) / 8
-        let blockAlign = channels * bitsPerSample / 8
-        let dataSize = UInt32(pcm.count)
-        let chunkSize = 36 + dataSize
-
-        var header = Data(capacity: 44)
-        header.append(contentsOf: Array("RIFF".utf8))
-        header.appendLE(chunkSize)
-        header.append(contentsOf: Array("WAVE".utf8))
-        header.append(contentsOf: Array("fmt ".utf8))
-        header.appendLE(UInt32(16))
-        header.appendLE(UInt16(1))
-        header.appendLE(channels)
-        header.appendLE(sampleRate)
-        header.appendLE(byteRate)
-        header.appendLE(blockAlign)
-        header.appendLE(bitsPerSample)
-        header.append(contentsOf: Array("data".utf8))
-        header.appendLE(dataSize)
-        return header + pcm
-    }
-
-    private func startMetering() {
-        displayLink?.invalidate()
-        displayLink = CADisplayLink(target: self, selector: #selector(updateAmplitude))
-        displayLink?.add(to: .main, forMode: .common)
-    }
-
-    @objc private func updateAmplitude() {
-        player?.updateMeters()
-        let db = player?.averagePower(forChannel: 0) ?? -160
-        amplitude = max(0, (db + 60) / 60)
     }
 
     func stop() {
-        player?.stop()
-        displayLink?.invalidate()
-        isSpeaking = false
-        amplitude = 0
-        onFinish = nil
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
-    }
-}
-
-extension GeminiTTSService: AVAudioPlayerDelegate {
-    nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
-        Task { @MainActor in
-            self.isSpeaking = false
-            self.amplitude = 0
-            self.displayLink?.invalidate()
-            self.onFinish?()
-            self.onFinish = nil
-        }
+        streamEnded = true
+        pendingBufferCount = 0
+        let cont = playbackContinuation
+        playbackContinuation = nil
+        finishPlayback()
+        cont?.resume()
     }
 }
 
@@ -151,12 +186,5 @@ enum GeminiTTSError: Error, LocalizedError {
         case .playbackError:
             return "Audio playback failed."
         }
-    }
-}
-
-private extension Data {
-    mutating func appendLE<T: FixedWidthInteger>(_ value: T) {
-        var v = value.littleEndian
-        withUnsafeBytes(of: &v) { self.append(contentsOf: $0) }
     }
 }
