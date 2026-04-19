@@ -8,25 +8,54 @@ final class GeminiTTSService {
     var amplitude: Float = 0
     var isSpeaking: Bool = false
 
-    private let endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-tts-preview:streamGenerateContent"
+    // High expressiveness — used for questions (pre-cached, latency hidden)
+    static let questionModel = "gemini-3.1-flash-tts-preview"
+    // Fastest engine — used for feedback where latency is felt in real-time
+    static let feedbackModel = "gemini-2.5-flash-preview-tts"
+
+    private let baseURL = "https://generativelanguage.googleapis.com/v1beta/models"
     private let audioFormat = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: 24000, channels: 1, interleaved: false)!
 
     private var engine: AVAudioEngine?
     private var playerNode: AVAudioPlayerNode?
     private var isMeteringTapInstalled = false
-
-    private var pendingBufferCount = 0
-    private var streamEnded = false
     private var playbackContinuation: CheckedContinuation<Void, Never>?
+
+    // Pre-generated audio cache: text → raw PCM data
+    private var pcmCache: [String: Data] = [:]
 
     private var apiKey: String {
         (try? KeychainService.retrieve(KeychainKey.geminiKey)) ?? ""
     }
 
-    func speak(_ text: String) async throws {
+    /// Fire-and-forget: fetch audio for `text` using the given model and cache it.
+    func prefetch(_ text: String, model: String = GeminiTTSService.questionModel) async {
+        guard pcmCache[text] == nil, !apiKey.isEmpty else { return }
+        guard let pcm = try? await fetchPCM(for: text, model: model) else { return }
+        pcmCache[text] = pcm
+    }
+
+    func speak(_ text: String, model: String = GeminiTTSService.questionModel) async throws {
         guard !apiKey.isEmpty else { throw GeminiTTSError.notConfigured }
 
-        var req = URLRequest(url: URL(string: "\(endpoint)?key=\(apiKey)&alt=sse")!)
+        let pcm: Data
+        if let cached = pcmCache[text] {
+            pcmCache.removeValue(forKey: text)
+            pcm = cached
+        } else {
+            pcm = try await fetchPCM(for: text, model: model)
+        }
+
+        try await playPCM(pcm)
+    }
+
+    func clearCache() {
+        pcmCache.removeAll()
+    }
+
+    private func fetchPCM(for text: String, model: String) async throws -> Data {
+        let urlString = "\(baseURL)/\(model):generateContent?key=\(apiKey)"
+        var req = URLRequest(url: URL(string: urlString)!)
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
@@ -43,46 +72,25 @@ final class GeminiTTSService {
         ]
         req.httpBody = try JSONSerialization.data(withJSONObject: body)
 
-        try setupAudioEngine()
-
-        let (asyncBytes, response) = try await URLSession.shared.bytes(for: req)
+        let (data, response) = try await URLSession.shared.data(for: req)
         guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
-            teardownAudioEngine()
             throw GeminiTTSError.httpError(statusCode: (response as? HTTPURLResponse)?.statusCode ?? -1)
         }
 
-        isSpeaking = true
-        streamEnded = false
-        pendingBufferCount = 0
-
-        for try await line in asyncBytes.lines {
-            guard line.hasPrefix("data: ") else { continue }
-            let jsonStr = String(line.dropFirst(6))
-            guard jsonStr != "[DONE]",
-                  let jsonData = jsonStr.data(using: .utf8),
-                  let json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
-                  let candidates = json["candidates"] as? [[String: Any]],
-                  let parts = (candidates.first?["content"] as? [String: Any])?["parts"] as? [[String: Any]],
-                  let b64 = (parts.first?["inlineData"] as? [String: Any])?["data"] as? String,
-                  let pcm = Data(base64Encoded: b64)
-            else { continue }
-
-            scheduleChunk(pcm)
+        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        guard
+            let candidates = json?["candidates"] as? [[String: Any]],
+            let parts = (candidates.first?["content"] as? [String: Any])?["parts"] as? [[String: Any]],
+            let b64 = (parts.first?["inlineData"] as? [String: Any])?["data"] as? String,
+            let pcm = Data(base64Encoded: b64)
+        else {
+            throw GeminiTTSError.playbackError
         }
 
-        streamEnded = true
-
-        if pendingBufferCount == 0 {
-            finishPlayback()
-            return
-        }
-
-        await withCheckedContinuation { continuation in
-            playbackContinuation = continuation
-        }
+        return pcm
     }
 
-    private func setupAudioEngine() throws {
+    private func playPCM(_ pcm: Data) async throws {
         teardownAudioEngine()
 
         try AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .default, options: [.allowBluetoothHFP, .defaultToSpeaker])
@@ -108,27 +116,16 @@ final class GeminiTTSService {
 
         self.engine = engine
         self.playerNode = playerNode
-    }
 
-    private func teardownAudioEngine() {
-        if isMeteringTapInstalled {
-            engine?.mainMixerNode.removeTap(onBus: 0)
-            isMeteringTapInstalled = false
-        }
-        playerNode?.stop()
-        engine?.stop()
-        playerNode = nil
-        engine = nil
-    }
+        guard let buffer = makePCMBuffer(from: pcm) else { throw GeminiTTSError.playbackError }
 
-    private func scheduleChunk(_ pcm: Data) {
-        guard let playerNode, let buffer = makePCMBuffer(from: pcm) else { return }
-        pendingBufferCount += 1
-        playerNode.scheduleBuffer(buffer, completionCallbackType: .dataPlayedBack) { [weak self] _ in
-            Task { @MainActor [weak self] in
-                guard let self else { return }
-                self.pendingBufferCount -= 1
-                if self.pendingBufferCount == 0 && self.streamEnded {
+        isSpeaking = true
+
+        await withCheckedContinuation { continuation in
+            playbackContinuation = continuation
+            playerNode.scheduleBuffer(buffer, completionCallbackType: .dataPlayedBack) { [weak self] _ in
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
                     let cont = self.playbackContinuation
                     self.playbackContinuation = nil
                     self.finishPlayback()
@@ -154,8 +151,19 @@ final class GeminiTTSService {
         return buffer
     }
 
+    private func teardownAudioEngine() {
+        if isMeteringTapInstalled {
+            engine?.mainMixerNode.removeTap(onBus: 0)
+            isMeteringTapInstalled = false
+        }
+        playerNode?.stop()
+        engine?.stop()
+        playerNode = nil
+        engine = nil
+    }
+
     private func finishPlayback() {
-        guard engine != nil else { return }
+        guard engine != nil || isSpeaking else { return }
         isSpeaking = false
         amplitude = 0
         teardownAudioEngine()
@@ -163,8 +171,6 @@ final class GeminiTTSService {
     }
 
     func stop() {
-        streamEnded = true
-        pendingBufferCount = 0
         let cont = playbackContinuation
         playbackContinuation = nil
         finishPlayback()
