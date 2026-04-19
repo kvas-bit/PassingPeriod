@@ -46,6 +46,8 @@
 		F85A94435F98560DDFF5A997 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1D07CE5C4B6C787D8647EEF /* OnboardingView.swift */; };
 		FF98631ACE88C07EDB343CB1 /* ScheduleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A7F2D707A0459C012E2B7BE /* ScheduleView.swift */; };
 		FFD4B32EC467A2632B07E280 /* iCalService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6C94F976AB66319D0DCBA38 /* iCalService.swift */; };
+		CC11223344556677AABBCCDD /* ClassLiveActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11223344556677AABBCCDD /* ClassLiveActivityAttributes.swift */; };
+		DD11223344556677AABBCCDD /* LiveActivitySyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB11223344556677AABBCCDD /* LiveActivitySyncService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -88,6 +90,8 @@
 		E9E5844B48000CAA4B80FE39 /* Note.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Note.swift; sourceTree = "<group>"; };
 		EC4EC4860EEF43CC1ED1CA57 /* WaveformView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WaveformView.swift; sourceTree = "<group>"; };
 		EDE5C0DCFA27F5B9AD9D2A7C /* ContentRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentRootView.swift; sourceTree = "<group>"; };
+		AA11223344556677AABBCCDD /* ClassLiveActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClassLiveActivityAttributes.swift; sourceTree = "<group>"; };
+		BB11223344556677AABBCCDD /* LiveActivitySyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivitySyncService.swift; sourceTree = "<group>"; };
 		FFE842F38F7D52ADA3B51AF7 /* GraphDataBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphDataBuilder.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -181,10 +185,19 @@
 				3A68C47D01E9F7F8531FED1D /* GeminiService.swift */,
 				D6C94F976AB66319D0DCBA38 /* iCalService.swift */,
 				DEC7BB9355CCE1068E7CB528 /* KeychainService.swift */,
+				BB11223344556677AABBCCDD /* LiveActivitySyncService.swift */,
 				56FC1FB7B28E2D368BD544C8 /* SpeechService.swift */,
 				607A961A436D642ED99E45F5 /* VisionOCRService.swift */,
 			);
 			path = Services;
+			sourceTree = "<group>";
+		};
+		EE11223344556677AABBCCDD /* LiveActivitiesShared */ = {
+			isa = PBXGroup;
+			children = (
+				AA11223344556677AABBCCDD /* ClassLiveActivityAttributes.swift */,
+			);
+			path = LiveActivitiesShared;
 			sourceTree = "<group>";
 		};
 		F02462C7270D4E1B84AACCFB /* Components */ = {
@@ -213,6 +226,7 @@
 			children = (
 				F46C71DE6B4A064A96B170F7 /* App */,
 				29CFED2B097ED473DC454CAE /* Extensions */,
+				EE11223344556677AABBCCDD /* LiveActivitiesShared */,
 				F933492C7596F8E002DFE03B /* Models */,
 				DC865CE72BABE75CF4B12BF1 /* Services */,
 				CC777C81ACEB356CAFB4A63E /* Views */,
@@ -302,6 +316,7 @@
 				584827BFA38CDC99C40E9EE4 /* BetweenClassesApp.swift in Sources */,
 				99F93878373500438EC353C1 /* CanvasConnectView.swift in Sources */,
 				44395BB45CC4F637FB3C7D96 /* CanvasService.swift in Sources */,
+				CC11223344556677AABBCCDD /* ClassLiveActivityAttributes.swift in Sources */,
 				DEC459162DDE4DDE6C3C5F49 /* ClassRowView.swift in Sources */,
 				E6DA7C4E32AD268F5CFC5D0D /* ClassTime.swift in Sources */,
 				7D78D3097C24B8EAE8CDCA2F /* Color+Theme.swift in Sources */,
@@ -313,6 +328,7 @@
 				BD7EE1CED0B656C1F197BFD7 /* GraphScene.swift in Sources */,
 				B821979F6FDAD7659E35602C /* HomeView.swift in Sources */,
 				AE2C198135470AB3BCB77CB5 /* KeychainService.swift in Sources */,
+				DD11223344556677AABBCCDD /* LiveActivitySyncService.swift in Sources */,
 				4F998A4760C731879F6FFAAF /* KnowledgeGraphView.swift in Sources */,
 				2D62416973F136016F50FCA5 /* Note.swift in Sources */,
 				DDFF34AFBB325F41B5923928 /* NoteCaptureView.swift in Sources */,
