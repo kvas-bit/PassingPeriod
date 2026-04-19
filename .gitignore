@@ -26,3 +26,6 @@ docs/superpowers
 
 # Xcode workspace UI state directories
 **/*.xcworkspacedata/
+
+# Xcode Swift Package Manager build artifacts (local — never commit)
+.swiftpm/
