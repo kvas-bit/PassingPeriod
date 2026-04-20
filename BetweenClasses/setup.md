@@ -34,12 +34,11 @@ In **Info** tab (or Info.plist):
 | Key | Where to get |
 |---|---|
 | Gemini | [aistudio.google.com](https://aistudio.google.com) → Get API key |
-| ElevenLabs | [elevenlabs.io](https://elevenlabs.io) → Profile → API Keys |
 | Canvas token | Canvas → Account → Settings → Approved Integrations |
 
 All keys are stored in Keychain via `KeychainService` — never hardcoded.
 
-## Demo voice ID
+## TTS voice
 
-The ElevenLabs voice is set to `21m00Tcm4TlvDq8ikWAM` (Rachel) in `ElevenLabsService.swift`.
-Change `voiceID` to your preferred voice.
+Quiz speech uses `gemini-3.1-flash-tts-preview` with the `Aoede` voice via the same Gemini API key.
+Change `voiceName` in `GeminiTTSService.swift` to switch voices.

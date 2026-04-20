@@ -25,7 +25,7 @@ final class QuizSessionManager {
 
     private(set) var questions: [QuizQuestion] = []
     private var session: QuizSession?
-    private let tts = ElevenLabsService()
+    private let tts = GeminiTTSService()
     private let stt = SpeechService()
     private var modelContext: ModelContext?
     private var activeRunToken = UUID()
@@ -81,6 +81,17 @@ final class QuizSessionManager {
         questions = Array(allQuestions.shuffled().prefix(5))
         currentIndex = 0
 
+        // Prefetch TTS audio for all questions in parallel so playback is instant
+        Task {
+            await withTaskGroup(of: Void.self) { group in
+                for (index, q) in questions.enumerated() {
+                    let intro = index == 0 ? "Let's review. " : ""
+                    let text = "\(intro)Question \(index + 1). \(q.question)"
+                    group.addTask { await self.tts.prefetch(text) }
+                }
+            }
+        }
+
         let sess = QuizSession(subjectID: subject.id)
         sess.totalQuestions = questions.count
         modelContext?.insert(sess)
@@ -93,6 +104,7 @@ final class QuizSessionManager {
         activeRunToken = UUID()
         isPreparingQuiz = false
         tts.stop()
+        tts.clearCache()
         _ = stt.stopListening()
         statusLabel = ""
         state = .idle
@@ -200,7 +212,7 @@ final class QuizSessionManager {
                 }
                 self.ttsAmplitude = 0
             }
-            try await tts.speak(questionText)
+            try await tts.speak(questionText, model: GeminiTTSService.questionModel)
         } catch {
             // Issue B: TTS failure — show question text (already set in statusLabel) and
             // wait a short delay before transitioning to listening so user can read it.
@@ -278,8 +290,9 @@ final class QuizSessionManager {
         }
         statusLabel = feedbackText
 
+        let toneTag = result.correct ? "[encouraging] " : "[supportive] "
         do {
-            try await tts.speak(feedbackText)
+            try await tts.speak(toneTag + feedbackText, model: GeminiTTSService.feedbackModel)
         } catch {}
 
         // Issue D: small delay after TTS before next question
