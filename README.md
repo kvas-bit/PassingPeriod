@@ -1,11 +1,11 @@
-# Between Classes
+# PassingPeriod
 
 An iOS app for students that captures notes via camera, quizzes you with AI-generated TTS, and syncs your schedule with Canvas LMS.
 
 ## Features
 
 - **Note Capture** — Snap a photo of a whiteboard or slides; OCR extracts the text and saves it as organized notes
-- **Voice Quiz** — Generate a quiz from your notes and answer by speaking; the app reads questions aloud using Gemini TTS
+- **Voice Quiz** — Generate a quiz from your notes and answer by speaking; the app reads questions aloud using Elevenlabs TTS
 - **Canvas Sync** — Pull your class schedule from Canvas LMS into the app
 - **Knowledge Graph** — Visual web of your notes and their connections
 
@@ -14,7 +14,7 @@ An iOS app for students that captures notes via camera, quizzes you with AI-gene
 | Layer | Technology |
 |---|---|
 | Framework | SwiftUI (iOS 17+) |
-| AI / TTS | Gemini API (gemini-3.1-flash, Aoede voice) |
+| AI / TTS | Gemini API & ElevenLabs TTS |
 | Schedule | Canvas LMS REST API |
 | OCR | Apple Vision framework |
 | Storage | SwiftData |
@@ -54,8 +54,9 @@ API keys are entered at first launch and stored securely in the iOS Keychain —
 | Key | Where to get |
 |---|---|
 | Gemini | [aistudio.google.com](https://aistudio.google.com) → Get API key |
+| Elevenlabs |
 | Canvas token | Canvas LMS → Account → Settings → Approved Integrations |
 
 ## License
 
-See the `LICENSE` file in this repository.
+None.
