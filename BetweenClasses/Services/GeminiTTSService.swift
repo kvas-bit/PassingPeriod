@@ -125,6 +125,24 @@ final class GeminiTTSService {
         }
         try await task.send(.string(setupText))
 
+        // Wait for the server's setupComplete acknowledgment before sending content
+        let setupResponse = try await task.receive()
+        switch setupResponse {
+        case .string(let s):
+            if let d = s.data(using: .utf8),
+               let json = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any],
+               json["setupComplete"] == nil {
+                throw GeminiTTSError.playbackError
+            }
+        case .data(let d):
+            if let json = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any],
+               json["setupComplete"] == nil {
+                throw GeminiTTSError.playbackError
+            }
+        @unknown default:
+            throw GeminiTTSError.playbackError
+        }
+
         let prompt: [String: Any] = [
             "client_content": [
                 "turns": [["role": "user", "parts": [["text": text]]]],
@@ -138,41 +156,55 @@ final class GeminiTTSService {
         try await task.send(.string(promptText))
 
         var pcm = Data()
-        var receivedTurnComplete = false
 
-        while !receivedTurnComplete {
-            let message = try await task.receive()
-            let data: Data
-            switch message {
-            case .data(let d):
-                data = d
-            case .string(let s):
-                guard let d = s.data(using: .utf8) else { continue }
-                data = d
-            @unknown default:
-                continue
-            }
+        let receiveResult: Data = try await withThrowingTaskGroup(of: Data.self) { group in
+            group.addTask {
+                var accumulated = Data()
+                while true {
+                    let message = try await task.receive()
+                    let msgData: Data
+                    switch message {
+                    case .data(let d):
+                        msgData = d
+                    case .string(let s):
+                        guard let d = s.data(using: .utf8) else { continue }
+                        msgData = d
+                    @unknown default:
+                        continue
+                    }
 
-            guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else { continue }
+                    guard let json = (try? JSONSerialization.jsonObject(with: msgData)) as? [String: Any] else { continue }
 
-            if let serverContent = json["serverContent"] as? [String: Any] {
-                if let modelTurn = serverContent["modelTurn"] as? [String: Any],
-                   let parts = modelTurn["parts"] as? [[String: Any]] {
-                    for part in parts {
-                        if let inlineData = part["inlineData"] as? [String: Any],
-                           let b64 = inlineData["data"] as? String,
-                           let chunk = Data(base64Encoded: b64) {
-                            pcm.append(chunk)
+                    if let serverContent = json["serverContent"] as? [String: Any] {
+                        if let modelTurn = serverContent["modelTurn"] as? [String: Any],
+                           let parts = modelTurn["parts"] as? [[String: Any]] {
+                            for part in parts {
+                                if let inlineData = part["inlineData"] as? [String: Any],
+                                   let b64 = inlineData["data"] as? String,
+                                   let chunk = Data(base64Encoded: b64) {
+                                    accumulated.append(chunk)
+                                }
+                            }
+                        }
+
+                        if let turnComplete = serverContent["turnComplete"] as? Bool, turnComplete {
+                            return accumulated
                         }
                     }
                 }
-
-                if let turnComplete = serverContent["turnComplete"] as? Bool, turnComplete {
-                    receivedTurnComplete = true
-                }
             }
+
+            group.addTask {
+                try await Task.sleep(for: .seconds(30))
+                throw GeminiTTSError.playbackError
+            }
+
+            let result = try await group.next()!
+            group.cancelAll()
+            return result
         }
 
+        pcm = receiveResult
         if pcm.isEmpty { throw GeminiTTSError.playbackError }
         return pcm
     }

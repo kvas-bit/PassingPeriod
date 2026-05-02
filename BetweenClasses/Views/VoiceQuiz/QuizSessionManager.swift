@@ -29,6 +29,7 @@ final class QuizSessionManager {
     private let stt = SpeechService()
     private var modelContext: ModelContext?
     private var activeRunToken = UUID()
+    private var prefetchTask: Task<Void, Never>?
 
     func configure(modelContext: ModelContext) {
         self.modelContext = modelContext
@@ -81,8 +82,8 @@ final class QuizSessionManager {
         questions = Array(allQuestions.shuffled().prefix(5))
         currentIndex = 0
 
-        // Prefetch TTS audio for all questions in parallel so playback is instant
-        Task {
+        prefetchTask?.cancel()
+        prefetchTask = Task {
             await withTaskGroup(of: Void.self) { group in
                 for (index, q) in questions.enumerated() {
                     let intro = index == 0 ? "Let's review. " : ""
@@ -103,6 +104,8 @@ final class QuizSessionManager {
     func stop() {
         activeRunToken = UUID()
         isPreparingQuiz = false
+        prefetchTask?.cancel()
+        prefetchTask = nil
         tts.stop()
         tts.clearCache()
         _ = stt.stopListening()
