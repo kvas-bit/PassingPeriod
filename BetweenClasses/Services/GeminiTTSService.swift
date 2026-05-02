@@ -14,6 +14,7 @@ final class GeminiTTSService {
     static let feedbackModel = "gemini-2.5-flash-preview-tts"
 
     private let baseURL = "https://generativelanguage.googleapis.com/v1beta/models"
+    private let websocketURL = "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent"
     private let audioFormat = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: 24000, channels: 1, interleaved: false)!
 
     private var engine: AVAudioEngine?
@@ -54,6 +55,10 @@ final class GeminiTTSService {
     }
 
     private func fetchPCM(for text: String, model: String) async throws -> Data {
+        if let streamed = try? await fetchPCMOverWebSocket(for: text, model: model), !streamed.isEmpty {
+            return streamed
+        }
+
         let urlString = "\(baseURL)/\(model):generateContent?key=\(apiKey)"
         var req = URLRequest(url: URL(string: urlString)!)
         req.httpMethod = "POST"
@@ -87,6 +92,120 @@ final class GeminiTTSService {
             throw GeminiTTSError.playbackError
         }
 
+        return pcm
+    }
+
+    private func fetchPCMOverWebSocket(for text: String, model: String) async throws -> Data {
+        guard let wsURL = URL(string: "\(websocketURL)?key=\(apiKey)") else {
+            throw GeminiTTSError.playbackError
+        }
+        let task = URLSession.shared.webSocketTask(with: wsURL)
+        task.resume()
+        defer {
+            task.cancel(with: .normalClosure, reason: nil)
+        }
+
+        let setup: [String: Any] = [
+            "setup": [
+                "model": "models/\(model)",
+                "generation_config": [
+                    "response_modalities": ["AUDIO"],
+                    "speech_config": [
+                        "voice_config": [
+                            "prebuilt_voice_config": ["voice_name": "Aoede"]
+                        ]
+                    ]
+                ]
+            ]
+        ]
+
+        let setupData = try JSONSerialization.data(withJSONObject: setup)
+        guard let setupText = String(data: setupData, encoding: .utf8) else {
+            throw GeminiTTSError.playbackError
+        }
+        try await task.send(.string(setupText))
+
+        // Wait for the server's setupComplete acknowledgment before sending content
+        let setupResponse = try await task.receive()
+        switch setupResponse {
+        case .string(let s):
+            if let d = s.data(using: .utf8),
+               let json = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any],
+               json["setupComplete"] == nil {
+                throw GeminiTTSError.playbackError
+            }
+        case .data(let d):
+            if let json = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any],
+               json["setupComplete"] == nil {
+                throw GeminiTTSError.playbackError
+            }
+        @unknown default:
+            throw GeminiTTSError.playbackError
+        }
+
+        let prompt: [String: Any] = [
+            "client_content": [
+                "turns": [["role": "user", "parts": [["text": text]]]],
+                "turn_complete": true
+            ]
+        ]
+        let promptData = try JSONSerialization.data(withJSONObject: prompt)
+        guard let promptText = String(data: promptData, encoding: .utf8) else {
+            throw GeminiTTSError.playbackError
+        }
+        try await task.send(.string(promptText))
+
+        var pcm = Data()
+
+        let receiveResult: Data = try await withThrowingTaskGroup(of: Data.self) { group in
+            group.addTask {
+                var accumulated = Data()
+                while true {
+                    let message = try await task.receive()
+                    let msgData: Data
+                    switch message {
+                    case .data(let d):
+                        msgData = d
+                    case .string(let s):
+                        guard let d = s.data(using: .utf8) else { continue }
+                        msgData = d
+                    @unknown default:
+                        continue
+                    }
+
+                    guard let json = (try? JSONSerialization.jsonObject(with: msgData)) as? [String: Any] else { continue }
+
+                    if let serverContent = json["serverContent"] as? [String: Any] {
+                        if let modelTurn = serverContent["modelTurn"] as? [String: Any],
+                           let parts = modelTurn["parts"] as? [[String: Any]] {
+                            for part in parts {
+                                if let inlineData = part["inlineData"] as? [String: Any],
+                                   let b64 = inlineData["data"] as? String,
+                                   let chunk = Data(base64Encoded: b64) {
+                                    accumulated.append(chunk)
+                                }
+                            }
+                        }
+
+                        if let turnComplete = serverContent["turnComplete"] as? Bool, turnComplete {
+                            return accumulated
+                        }
+                    }
+                }
+            }
+
+            group.addTask {
+                try await Task.sleep(for: .seconds(30))
+                throw GeminiTTSError.playbackError
+            }
+
+            let result = try await group.next()!
+            group.cancelAll()
+            return result
+        }
+
+        pcm = receiveResult
+        if pcm.isEmpty { throw GeminiTTSError.playbackError }
         return pcm
     }
 
