@@ -1,6 +1,7 @@
 import Foundation
 import AVFoundation
 import Observation
+import OSLog
 
 @Observable
 @MainActor
@@ -8,10 +9,18 @@ final class GeminiTTSService {
     var amplitude: Float = 0
     var isSpeaking: Bool = false
 
+    /// Set when the Live WebSocket path fails or returns no audio before REST fallback succeeds. Useful for quiz diagnostics.
+    private(set) var lastTransportDiagnostic: String?
+
+    private static let logger = Logger(
+        subsystem: Bundle.main.bundleIdentifier ?? "BetweenClasses",
+        category: "GeminiTTS"
+    )
+
     // High expressiveness — used for questions (pre-cached, latency hidden)
-    static let questionModel = "gemini-3.1-flash-tts-preview"
+    nonisolated static let questionModel = "gemini-3.1-flash-tts-preview"
     // Fastest engine — used for feedback where latency is felt in real-time
-    static let feedbackModel = "gemini-2.5-flash-preview-tts"
+    nonisolated static let feedbackModel = "gemini-2.5-flash-preview-tts"
 
     private let baseURL = "https://generativelanguage.googleapis.com/v1beta/models"
     private let websocketURL = "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent"
@@ -39,6 +48,8 @@ final class GeminiTTSService {
     func speak(_ text: String, model: String = GeminiTTSService.questionModel) async throws {
         guard !apiKey.isEmpty else { throw GeminiTTSError.notConfigured }
 
+        lastTransportDiagnostic = nil
+
         let pcm: Data
         if let cached = pcmCache[text] {
             pcmCache.removeValue(forKey: text)
@@ -55,8 +66,16 @@ final class GeminiTTSService {
     }
 
     private func fetchPCM(for text: String, model: String) async throws -> Data {
-        if let streamed = try? await fetchPCMOverWebSocket(for: text, model: model), !streamed.isEmpty {
-            return streamed
+        do {
+            let streamed = try await fetchPCMOverWebSocket(for: text, model: model)
+            if !streamed.isEmpty { return streamed }
+            let note = "Live WebSocket returned no audio; using REST TTS."
+            Self.logger.warning("\(note)")
+            lastTransportDiagnostic = note
+        } catch {
+            let note = "Live WebSocket failed: \(error.localizedDescription)"
+            Self.logger.error("\(note)")
+            lastTransportDiagnostic = note
         }
 
         let urlString = "\(baseURL)/\(model):generateContent?key=\(apiKey)"
@@ -108,11 +127,11 @@ final class GeminiTTSService {
         let setup: [String: Any] = [
             "setup": [
                 "model": "models/\(model)",
-                "generation_config": [
-                    "response_modalities": ["AUDIO"],
-                    "speech_config": [
-                        "voice_config": [
-                            "prebuilt_voice_config": ["voice_name": "Aoede"]
+                "generationConfig": [
+                    "responseModalities": ["AUDIO"],
+                    "speechConfig": [
+                        "voiceConfig": [
+                            "prebuiltVoiceConfig": ["voiceName": "Aoede"]
                         ]
                     ]
                 ]
@@ -129,24 +148,20 @@ final class GeminiTTSService {
         let setupResponse = try await task.receive()
         switch setupResponse {
         case .string(let s):
-            if let d = s.data(using: .utf8),
-               let json = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any],
-               json["setupComplete"] == nil {
-                throw GeminiTTSError.playbackError
-            }
+            try Self.validateSetupResponseJSON(s)
         case .data(let d):
-            if let json = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any],
-               json["setupComplete"] == nil {
-                throw GeminiTTSError.playbackError
+            guard let s = String(data: d, encoding: .utf8) else {
+                throw GeminiTTSError.webSocketUnexpectedResponse("Setup ack: binary payload")
             }
+            try Self.validateSetupResponseJSON(s)
         @unknown default:
-            throw GeminiTTSError.playbackError
+            throw GeminiTTSError.webSocketUnexpectedResponse("Setup ack: unknown frame")
         }
 
         let prompt: [String: Any] = [
-            "client_content": [
+            "clientContent": [
                 "turns": [["role": "user", "parts": [["text": text]]]],
-                "turn_complete": true
+                "turnComplete": true
             ]
         ]
         let promptData = try JSONSerialization.data(withJSONObject: prompt)
@@ -174,6 +189,12 @@ final class GeminiTTSService {
                     }
 
                     guard let json = (try? JSONSerialization.jsonObject(with: msgData)) as? [String: Any] else { continue }
+
+                    if let err = json["error"] as? [String: Any] {
+                        let msg = (err["message"] as? String) ?? String(describing: err)
+                        let code = err["code"].map { String(describing: $0) } ?? "?"
+                        throw GeminiTTSError.webSocketFailed("Stream error (\(code)): \(msg)")
+                    }
 
                     if let serverContent = json["serverContent"] as? [String: Any] {
                         if let modelTurn = serverContent["modelTurn"] as? [String: Any],
@@ -207,6 +228,21 @@ final class GeminiTTSService {
         pcm = receiveResult
         if pcm.isEmpty { throw GeminiTTSError.playbackError }
         return pcm
+    }
+
+    private static func validateSetupResponseJSON(_ raw: String) throws {
+        guard let d = raw.data(using: .utf8),
+              let json = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any] else {
+            throw GeminiTTSError.webSocketUnexpectedResponse(String(raw.prefix(280)))
+        }
+        if let err = json["error"] as? [String: Any] {
+            let msg = (err["message"] as? String) ?? String(describing: err)
+            let code = err["code"].map { String(describing: $0) } ?? "?"
+            throw GeminiTTSError.webSocketFailed("Setup (\(code)): \(msg)")
+        }
+        guard json["setupComplete"] != nil else {
+            throw GeminiTTSError.webSocketUnexpectedResponse("Expected setupComplete: \(String(raw.prefix(280)))")
+        }
     }
 
     private func playPCM(_ pcm: Data) async throws {
@@ -301,6 +337,8 @@ enum GeminiTTSError: Error, LocalizedError {
     case notConfigured
     case httpError(statusCode: Int)
     case playbackError
+    case webSocketFailed(String)
+    case webSocketUnexpectedResponse(String)
 
     var errorDescription: String? {
         switch self {
@@ -310,6 +348,10 @@ enum GeminiTTSError: Error, LocalizedError {
             return "Gemini TTS request failed (HTTP \(code))."
         case .playbackError:
             return "Audio playback failed."
+        case .webSocketFailed(let detail):
+            return "Gemini Live WebSocket: \(detail)"
+        case .webSocketUnexpectedResponse(let detail):
+            return "Gemini Live WebSocket unexpected response: \(detail)"
         }
     }
 }

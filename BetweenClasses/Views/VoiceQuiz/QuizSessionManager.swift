@@ -19,6 +19,8 @@ final class QuizSessionManager {
     var currentIndex: Int = 0
     var statusLabel: String = ""
     var errorMessage: String? = nil
+    /// Shown during an active quiz when Live TTS fell back or failed in a diagnosable way.
+    var sessionTransportNote: String? = nil
     var ttsAmplitude: Float = 0
     var micAmplitude: Float = 0
     var isPreparingQuiz: Bool = false
@@ -38,6 +40,7 @@ final class QuizSessionManager {
     func start(subject: Subject, topicName: String? = nil, noteIDs: [UUID] = []) async {
         guard !isPreparingQuiz else { return }
         errorMessage = nil
+        sessionTransportNote = nil
         isPreparingQuiz = true
         let runToken = UUID()
         activeRunToken = runToken
@@ -110,6 +113,7 @@ final class QuizSessionManager {
         tts.clearCache()
         _ = stt.stopListening()
         statusLabel = ""
+        sessionTransportNote = nil
         state = .idle
     }
 
@@ -216,10 +220,12 @@ final class QuizSessionManager {
                 self.ttsAmplitude = 0
             }
             try await tts.speak(questionText, model: GeminiTTSService.questionModel)
+            sessionTransportNote = tts.lastTransportDiagnostic
         } catch {
             // Issue B: TTS failure — show question text (already set in statusLabel) and
             // wait a short delay before transitioning to listening so user can read it.
             ttsFailed = true
+            sessionTransportNote = tts.lastTransportDiagnostic ?? error.localizedDescription
         }
 
         // Issue D: AVAudioSession conflict — add delay after TTS before starting mic
@@ -296,7 +302,10 @@ final class QuizSessionManager {
         let toneTag = result.correct ? "[encouraging] " : "[supportive] "
         do {
             try await tts.speak(toneTag + feedbackText, model: GeminiTTSService.feedbackModel)
-        } catch {}
+            sessionTransportNote = tts.lastTransportDiagnostic
+        } catch {
+            sessionTransportNote = tts.lastTransportDiagnostic ?? error.localizedDescription
+        }
 
         // Issue D: small delay after TTS before next question
         try? await Task.sleep(for: .milliseconds(300))
