@@ -8,6 +8,8 @@ struct OCRConfirmView: View {
     let ocrConfidenceSummary: String?
     let suggestedTopicName: String?
     let unreadableRegions: [String]
+    /// True when Vision OCR threw or returned no readable text — enables recovery UI.
+    let ocrFailed: Bool
     let onSave: (Note) -> Void
     /// When non-nil, a "Save & Capture Another" button is shown. Caller should
     /// dismiss the sheet and return to the camera when this fires.
@@ -32,6 +34,7 @@ struct OCRConfirmView: View {
          ocrConfidenceSummary: String? = nil,
          suggestedTopicName: String? = nil,
          unreadableRegions: [String] = [],
+         ocrFailed: Bool = false,
          onSave: @escaping (Note) -> Void,
          onCaptureAnother: (() -> Void)? = nil) {
         self.imageData = imageData
@@ -40,6 +43,7 @@ struct OCRConfirmView: View {
         self.ocrConfidenceSummary = ocrConfidenceSummary
         self.suggestedTopicName = suggestedTopicName
         self.unreadableRegions = unreadableRegions
+        self.ocrFailed = ocrFailed
         self.onSave = onSave
         self.onCaptureAnother = onCaptureAnother
         self._editedText = State(initialValue: extractedText)
@@ -47,6 +51,55 @@ struct OCRConfirmView: View {
 
     private var existingTopics: [String] {
         selectedSubject?.topicNames ?? []
+    }
+
+    private var ocrRecoveryCallout: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(Color.orange.opacity(0.85))
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Couldn’t read this photo automatically")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(Color.textPrimary)
+                    Text("Retake with brighter light and closer framing, pick another image, or type your notes below — you can still save.")
+                        .bcCaption()
+                        .foregroundStyle(Color.textSecond)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            if onCaptureAnother != nil {
+                Button {
+                    dismiss()
+                    DispatchQueue.main.async {
+                        onCaptureAnother?()
+                    }
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "camera.rotate.fill")
+                            .font(.system(size: 14, weight: .semibold))
+                        Text("Retake or choose another photo")
+                            .font(.system(size: 14, weight: .semibold))
+                    }
+                    .foregroundStyle(Color.textPrimary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(Color.bgElevated, in: RoundedRectangle(cornerRadius: 12))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color.glassStroke, lineWidth: 1)
+                    )
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(16)
+        .background(Color.orange.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(Color.orange.opacity(0.22), lineWidth: 1)
+        )
     }
 
     private var resolvedTopicName: String {
@@ -64,6 +117,10 @@ struct OCRConfirmView: View {
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
+
+                        if ocrFailed {
+                            ocrRecoveryCallout
+                        }
 
                         // Photo thumbnail
                         HStack {

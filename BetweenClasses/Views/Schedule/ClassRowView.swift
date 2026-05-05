@@ -37,7 +37,7 @@ struct ClassRowView: View {
                 Spacer()
 
                 if isHappeningNow {
-                    WhitePill(text: "Now")
+                    WhitePill(text: "Now", prominent: true)
                 } else if isFreeNow {
                     WhitePill(text: "Free now")
                 }

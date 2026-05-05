@@ -6,10 +6,12 @@ struct ScheduleView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Subject.name) private var subjects: [Subject]
 
+    @AppStorage("scheduleLastSyncEpoch") private var lastSyncEpoch: Double = 0
     @State private var isRefreshing = false
     @State private var appeared = false
     @State private var showSettings = false
     @State private var confirmDeleteAll = false
+    @State private var syncNotice: String?
 
     var body: some View {
         let _ = appState.colorCodingEnabled
@@ -18,7 +20,9 @@ struct ScheduleView: View {
                 Color.bgPrimary.ignoresSafeArea()
 
                 Group {
-                    if subjects.isEmpty {
+                    if subjects.isEmpty && isRefreshing {
+                        syncingPlaceholder
+                    } else if subjects.isEmpty {
                         emptyState
                     } else {
                         subjectList
@@ -99,6 +103,8 @@ struct ScheduleView: View {
             VStack(alignment: .leading, spacing: BCSpacing.md) {
                 connectionSourcesCard
 
+                syncMetaSection
+
                 if isRefreshing {
                     HStack(spacing: 10) {
                         ProgressView()
@@ -173,40 +179,113 @@ struct ScheduleView: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "calendar.badge.exclamationmark")
-                .font(.system(size: 48, weight: .thin))
-                .foregroundStyle(Color.textTertiary)
+        ScrollView {
+            VStack(spacing: 18) {
+                syncMetaSection
 
-            Text("No schedule yet")
+                Image(systemName: "calendar.badge.exclamationmark")
+                    .font(.system(size: 48, weight: .thin))
+                    .foregroundStyle(Color.textTertiary)
+
+                Text("No schedule yet")
+                    .bcHeadline()
+                    .foregroundStyle(Color.textPrimary)
+
+                Text("Connect Canvas or add an iCal URL to sync your class schedule.")
+                    .bcBody()
+                    .foregroundStyle(Color.textSecond)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 40)
+
+                Button {
+                    showSettings = true
+                } label: {
+                    Text("Connect")
+                }
+                .buttonStyle(BCPrimaryButtonStyle())
+                .padding(.horizontal, BCSpacing.xxl)
+                .padding(.top, 4)
+
+                Button {
+                    showSettings = true
+                } label: {
+                    Text("Canvas token or iCal URL")
+                }
+                .buttonStyle(.plain)
+                .bcCaption()
+                .foregroundStyle(Color.textSecond)
+                .padding(.top, 10)
+            }
+            .padding(.vertical, 28)
+        }
+    }
+
+    @ViewBuilder
+    private var syncMetaSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            if let notice = syncNotice, !notice.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(Color.orange.opacity(0.9))
+                    Text(notice)
+                        .bcCaption()
+                        .foregroundStyle(Color.textPrimary.opacity(0.92))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(14)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.orange.opacity(0.08), in: RoundedRectangle(cornerRadius: BCRadius.control, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: BCRadius.control, style: .continuous)
+                        .strokeBorder(Color.orange.opacity(0.22), lineWidth: 1)
+                )
+            }
+
+            HStack(spacing: 8) {
+                Image(systemName: "arrow.triangle.2.circlepath")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Color.textTertiary)
+                if lastSyncEpoch > 0 {
+                    Text("Last sync \(Date(timeIntervalSince1970: lastSyncEpoch).formatted(.relative(presentation: .named)))")
+                        .bcCaption()
+                        .foregroundStyle(Color.textSecond)
+                } else {
+                    Text("Not synced yet — tap refresh after connecting.")
+                        .bcCaption()
+                        .foregroundStyle(Color.textTertiary)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, BCSpacing.md)
+            .padding(.vertical, 10)
+            .background(Color.bgSurface.opacity(0.45), in: RoundedRectangle(cornerRadius: BCRadius.control, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: BCRadius.control, style: .continuous)
+                    .strokeBorder(Color.glassStroke.opacity(0.85), lineWidth: 1)
+            )
+        }
+        .padding(.horizontal, BCSpacing.gutter)
+    }
+
+    private var syncingPlaceholder: some View {
+        VStack(spacing: 22) {
+            ProgressView()
+                .scaleEffect(1.15)
+                .tint(Color.textSecond)
+            Text("Pulling your schedule…")
                 .bcHeadline()
                 .foregroundStyle(Color.textPrimary)
-
-            Text("Connect Canvas or add an iCal URL to sync your class schedule.")
+            Text("Contacting Canvas and your calendar link. You can leave this screen — sync finishes in the background.")
                 .bcBody()
                 .foregroundStyle(Color.textSecond)
                 .multilineTextAlignment(.center)
-                .padding(.horizontal, 40)
-
-            Button {
-                showSettings = true
-            } label: {
-                Text("Connect")
-            }
-            .buttonStyle(BCPrimaryButtonStyle())
-            .padding(.horizontal, BCSpacing.xxl)
-            .padding(.top, 4)
-
-            Button {
-                showSettings = true
-            } label: {
-                Text("Canvas token or iCal URL")
-            }
-            .buttonStyle(.plain)
-            .bcCaption()
-            .foregroundStyle(Color.textSecond)
-            .padding(.top, 10)
+                .padding(.horizontal, 36)
+            syncMetaSection
+                .padding(.top, 8)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+        .padding(.bottom, 48)
     }
 
     // MARK: - Clear

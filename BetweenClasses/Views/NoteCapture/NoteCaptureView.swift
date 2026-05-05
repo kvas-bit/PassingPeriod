@@ -11,12 +11,27 @@ struct NoteCaptureView: View {
     @State private var showImagePicker = false
     @State private var captureRequested = false
     @State private var captureSequence = 0
+    @State private var cameraSessionFailed = false
+    @State private var cameraRelaunchToken = 0
+    @State private var lastCaptureOCRFailed = false
+    @State private var captureUserMessage: String?
 
     var body: some View {
         ZStack(alignment: .bottom) {
             ZStack {
-                CameraPreviewView(captureRequested: $captureRequested, onCapture: handleCapture)
-                    .ignoresSafeArea()
+                CameraPreviewView(
+                    captureRequested: $captureRequested,
+                    cameraSessionFailed: $cameraSessionFailed,
+                    onCapture: handleCapture,
+                    onSessionIssue: {
+                        captureUserMessage = "Camera unavailable. Allow access in Settings, or pick a photo from your library."
+                    },
+                    onCaptureFailure: {
+                        captureUserMessage = "Couldn’t capture this shot — try again or choose from your library."
+                    }
+                )
+                .id(cameraRelaunchToken)
+                .ignoresSafeArea()
                 DocumentCaptureGuideOverlay()
                     .ignoresSafeArea()
                     .allowsHitTesting(false)
@@ -24,6 +39,12 @@ struct NoteCaptureView: View {
 
             // Controls float above tab bar — 83pt clears the custom tab bar on all iPhones
             captureControls
+
+            if cameraSessionFailed || captureUserMessage != nil {
+                captureRecoveryBanner
+                    .padding(.horizontal, BCSpacing.gutter)
+                    .padding(.bottom, 108)
+            }
 
             // Processing overlay
             if isProcessing {
@@ -39,16 +60,19 @@ struct NoteCaptureView: View {
                     ocrConfidenceSummary: ocrDraft?.confidenceSummary,
                     suggestedTopicName: ocrDraft?.suggestedTopic,
                     unreadableRegions: ocrDraft?.unreadableRegions ?? [],
+                    ocrFailed: lastCaptureOCRFailed,
                     onSave: { _ in
                         capturedImage = nil
                         extractedText = ""
                         ocrDraft = nil
+                        lastCaptureOCRFailed = false
                     },
                     onCaptureAnother: {
                         // Dismiss sheet (showConfirm goes false) then camera is live again
                         capturedImage = nil
                         extractedText = ""
                         ocrDraft = nil
+                        lastCaptureOCRFailed = false
                         showConfirm = false
                     }
                 )
@@ -132,14 +156,77 @@ struct NoteCaptureView: View {
                 Text("Reading your notes…")
                     .bcBody()
                     .foregroundStyle(Color.textSecond)
+                Text("If this takes too long, you can cancel from the review screen and retake.")
+                    .bcCaption()
+                    .foregroundStyle(Color.textTertiary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 24)
             }
         }
+    }
+
+    private var captureRecoveryBanner: some View {
+        let title = cameraSessionFailed ? "Camera unavailable" : "Capture issue"
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: cameraSessionFailed ? "camera.fill" : "exclamationmark.circle.fill")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(Color.textPrimary.opacity(0.9))
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(Color.textPrimary)
+                    Text(captureUserMessage ?? "")
+                        .bcCaption()
+                        .foregroundStyle(Color.textSecond)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            HStack(spacing: 12) {
+                if cameraSessionFailed {
+                    Button {
+                        if let url = URL(string: UIApplication.openSettingsURLString) {
+                            UIApplication.shared.open(url)
+                        }
+                    } label: {
+                        Text("Open Settings")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(Color.textPrimary)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .background(Color.white.opacity(0.12), in: RoundedRectangle(cornerRadius: BCRadius.control, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                }
+                Button {
+                    captureUserMessage = nil
+                    cameraSessionFailed = false
+                    cameraRelaunchToken += 1
+                } label: {
+                    Text(cameraSessionFailed ? "Try camera again" : "Dismiss")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(Color.textPrimary)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(Color.accentPrimary.opacity(0.35), in: RoundedRectangle(cornerRadius: BCRadius.control, style: .continuous))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.bgSurface.opacity(0.92), in: RoundedRectangle(cornerRadius: BCRadius.panel, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: BCRadius.panel, style: .continuous)
+                .strokeBorder(Color.glassStroke, lineWidth: 1)
+        )
     }
 
     private func handleCapture(_ imageData: Data) {
         captureSequence += 1
         let currentCaptureID = captureSequence
         capturedImage = imageData
+        lastCaptureOCRFailed = false
         isProcessing = true
 
         Task {
@@ -149,6 +236,8 @@ struct NoteCaptureView: View {
                     guard currentCaptureID == captureSequence else { return }
                     extractedText = draft.text
                     ocrDraft = draft
+                    let textEmpty = draft.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    lastCaptureOCRFailed = textEmpty
                     isProcessing = false
                     showConfirm = true
                 }
@@ -157,6 +246,7 @@ struct NoteCaptureView: View {
                     guard currentCaptureID == captureSequence else { return }
                     extractedText = ""
                     ocrDraft = nil
+                    lastCaptureOCRFailed = true
                     isProcessing = false
                     showConfirm = true
                 }
@@ -291,18 +381,35 @@ struct ImagePickerShim: UIViewControllerRepresentable {
 
 struct CameraPreviewView: UIViewRepresentable {
     @Binding var captureRequested: Bool
+    @Binding var cameraSessionFailed: Bool
     let onCapture: (Data) -> Void
+    let onSessionIssue: () -> Void
+    let onCaptureFailure: () -> Void
 
-    func makeCoordinator() -> Coordinator { Coordinator(onCapture: onCapture) }
+    func makeCoordinator() -> Coordinator {
+        Coordinator(
+            onCapture: onCapture,
+            sessionFailed: $cameraSessionFailed,
+            onSessionIssue: onSessionIssue,
+            onCaptureFailure: onCaptureFailure
+        )
+    }
 
     func makeUIView(context: Context) -> CameraView {
         let view = CameraView()
         view.coordinator = context.coordinator
+        view.onSessionFailed = { [weak coordinator = context.coordinator] in
+            coordinator?.reportSessionFailed()
+        }
+        view.onCaptureHardwareFailure = { [weak coordinator = context.coordinator] in
+            coordinator?.reportCaptureFailure()
+        }
         view.startSession()
         return view
     }
 
     func updateUIView(_ uiView: CameraView, context: Context) {
+        context.coordinator.sessionFailed = $cameraSessionFailed
         if captureRequested {
             uiView.capturePhoto()
             DispatchQueue.main.async { captureRequested = false }
@@ -311,12 +418,37 @@ struct CameraPreviewView: UIViewRepresentable {
 
     final class Coordinator {
         let onCapture: (Data) -> Void
-        init(onCapture: @escaping (Data) -> Void) { self.onCapture = onCapture }
+        let onSessionIssue: () -> Void
+        let onCaptureFailure: () -> Void
+        var sessionFailed: Binding<Bool>
+
+        init(
+            onCapture: @escaping (Data) -> Void,
+            sessionFailed: Binding<Bool>,
+            onSessionIssue: @escaping () -> Void,
+            onCaptureFailure: @escaping () -> Void
+        ) {
+            self.onCapture = onCapture
+            self.sessionFailed = sessionFailed
+            self.onSessionIssue = onSessionIssue
+            self.onCaptureFailure = onCaptureFailure
+        }
+
+        func reportSessionFailed() {
+            sessionFailed.wrappedValue = true
+            onSessionIssue()
+        }
+
+        func reportCaptureFailure() {
+            onCaptureFailure()
+        }
     }
 }
 
 final class CameraView: UIView {
     var coordinator: CameraPreviewView.Coordinator?
+    var onSessionFailed: (() -> Void)?
+    var onCaptureHardwareFailure: (() -> Void)?
     private var session: AVCaptureSession?
     private var previewLayer: AVCaptureVideoPreviewLayer?
     private var photoOutput = AVCapturePhotoOutput()
@@ -332,7 +464,10 @@ final class CameraView: UIView {
 
         guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back),
               let input = try? AVCaptureDeviceInput(device: device),
-              s.canAddInput(input) else { return }
+              s.canAddInput(input) else {
+            DispatchQueue.main.async { self.onSessionFailed?() }
+            return
+        }
 
         s.addInput(input)
         if s.canAddOutput(photoOutput) { s.addOutput(photoOutput) }
@@ -356,7 +491,14 @@ final class CameraView: UIView {
 extension CameraView: AVCapturePhotoCaptureDelegate {
     func photoOutput(_ output: AVCapturePhotoOutput,
                      didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
-        guard let data = photo.fileDataRepresentation() else { return }
+        if error != nil {
+            DispatchQueue.main.async { self.onCaptureHardwareFailure?() }
+            return
+        }
+        guard let data = photo.fileDataRepresentation() else {
+            DispatchQueue.main.async { self.onCaptureHardwareFailure?() }
+            return
+        }
         coordinator?.onCapture(data)
     }
 }
