@@ -34,6 +34,48 @@ struct VoiceQuizView: View {
         return appState.quizSubject?.name ?? "Quiz"
     }
 
+    /// Phase strip for the active session (pairs with `QuizSessionManager` status copy).
+    private var livePhaseTitle: String {
+        switch manager.state {
+        case .speaking: return "Speaking"
+        case .listening: return "Your turn"
+        case .evaluating: return "Checking answer"
+        default: return "Live"
+        }
+    }
+
+    private var livePhaseChipBackground: Color {
+        switch manager.state {
+        case .listening: return Color.bcAccentMuted
+        case .speaking: return Color.bcAccentSubtle
+        case .evaluating: return Color.white.opacity(0.08)
+        default: return Color.white.opacity(0.06)
+        }
+    }
+
+    /// Avoids repeating the question in the footer while TTS reads it; still shows timeout / retry hints from the manager.
+    private var sessionStatusFootnote: String? {
+        guard !manager.statusLabel.isEmpty else { return nil }
+        if case .evaluating = manager.state { return nil }
+        if case .speaking = manager.state, let q = manager.currentQuestion {
+            let a = manager.statusLabel.trimmingCharacters(in: .whitespacesAndNewlines)
+            let b = q.question.trimmingCharacters(in: .whitespacesAndNewlines)
+            if a == b {
+                return "Playing the question — the mic opens when it’s your turn to answer."
+            }
+        }
+        return manager.statusLabel
+    }
+
+    private var pulseSectionLabel: String {
+        switch manager.state {
+        case .listening: return "Listening"
+        case .speaking: return "Audio"
+        case .evaluating: return "Pause"
+        default: return "Session"
+        }
+    }
+
     private var colorCodingRefreshToken: Bool {
         appState.colorCodingEnabled
     }
@@ -109,6 +151,13 @@ struct VoiceQuizView: View {
             Spacer()
             GlassCard {
                 VStack(spacing: 20) {
+                    Text("Ready")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(Color.textSecond)
+                        .textCase(.uppercase)
+                        .tracking(1.1)
+                        .frame(maxWidth: .infinity)
+
                     Image(systemName: "waveform.circle.fill")
                         .font(.system(size: 52, weight: .thin))
                         .foregroundStyle(Color.textPrimary)
@@ -118,9 +167,11 @@ struct VoiceQuizView: View {
                         Text(appState.quizSubject?.name ?? "Quiz")
                             .bcHeadline()
                             .foregroundStyle(Color.textPrimary)
+                            .multilineTextAlignment(.center)
                         Text(quizScopeSummary)
                             .bcCaption()
                             .foregroundStyle(Color.textTertiary)
+                            .multilineTextAlignment(.center)
                         let scopedNotes: [Note] = {
                             guard let subject = appState.quizSubject else { return [] }
                             if !appState.quizNoteIDs.isEmpty {
@@ -207,10 +258,16 @@ struct VoiceQuizView: View {
             VStack(alignment: .leading, spacing: 16) {
                 GlassCard {
                     VStack(alignment: .leading, spacing: 8) {
+                        Text("Study library")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(Color.textSecond)
+                            .textCase(.uppercase)
+                            .tracking(1.1)
+
                         Text("Voice Quiz")
                             .bcHeadline()
                             .foregroundStyle(Color.textPrimary)
-                        Text("This tab is for study sets and live questioning. Schedule is just class timing + sync.")
+                        Text("Pick a subject or topic, then run a live voice session. Use Schedule for class times and sync.")
                             .bcBody()
                             .foregroundStyle(Color.textSecond)
                     }
@@ -219,10 +276,10 @@ struct VoiceQuizView: View {
                 if subjects.isEmpty {
                     GlassCard {
                         VStack(alignment: .leading, spacing: 10) {
-                            Text("No subjects yet")
+                            Text("Nothing to quiz yet")
                                 .bcHeadline()
                                 .foregroundStyle(Color.textPrimary)
-                            Text("Connect Canvas or capture notes first.")
+                            Text("Connect Canvas on Schedule or capture notes — subjects appear here automatically.")
                                 .bcBody()
                                 .foregroundStyle(Color.textSecond)
                         }
@@ -368,6 +425,12 @@ struct VoiceQuizView: View {
             Spacer()
             GlassCard {
                 VStack(spacing: 20) {
+                    Text("Needs material")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(Color.textSecond)
+                        .textCase(.uppercase)
+                        .tracking(1.1)
+
                     Image(systemName: "doc.text.magnifyingglass")
                         .font(.system(size: 48, weight: .thin))
                         .foregroundStyle(Color.textTertiary)
@@ -375,7 +438,7 @@ struct VoiceQuizView: View {
                         .bcHeadline()
                         .foregroundStyle(Color.textPrimary)
                         .multilineTextAlignment(.center)
-                    Text("Capture notes from \(subjectName) first, then come back to quiz yourself.")
+                    Text("Capture a few notes for this class first. The quiz builds from what you saved.")
                         .bcBody()
                         .foregroundStyle(Color.textSecond)
                         .multilineTextAlignment(.center)
@@ -401,15 +464,36 @@ struct VoiceQuizView: View {
             Spacer()
 
             VStack(spacing: 0) {
-                HStack {
-                    Text(appState.quizSubject?.name.uppercased() ?? "QUIZ")
-                        .bcCaption()
-                        .foregroundStyle(Color.textSecond)
-                    Spacer()
-                    if manager.questions.count > 0 {
-                        Text("Q \(manager.currentIndex + 1) of \(manager.questions.count)")
+                VStack(alignment: .leading, spacing: BCSpacing.sm) {
+                    HStack(alignment: .center, spacing: 10) {
+                        Text(livePhaseTitle.uppercased())
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(Color.bcAccent)
+                            .tracking(0.9)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(livePhaseChipBackground, in: Capsule(style: .continuous))
+                            .overlay(
+                                Capsule(style: .continuous)
+                                    .strokeBorder(Color.bcAccent.opacity(0.22), lineWidth: 1)
+                            )
+
+                        Spacer(minLength: 8)
+
+                        if manager.questions.count > 0 {
+                            Text("Q \(manager.currentIndex + 1) / \(manager.questions.count)")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(Color.textSecond)
+                                .tracking(0.6)
+                        }
+                    }
+
+                    HStack {
+                        Text(appState.quizSubject?.name ?? "Quiz")
                             .bcCaption()
                             .foregroundStyle(Color.textSecond)
+                            .lineLimit(1)
+                        Spacer()
                     }
                 }
                 .padding(.horizontal, BCSpacing.xl)
@@ -420,13 +504,21 @@ struct VoiceQuizView: View {
                     .background(Color.glassStroke)
 
                 VStack(spacing: 8) {
+                    Text("Current question")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(Color.textTertiary)
+                        .textCase(.uppercase)
+                        .tracking(0.8)
+                        .padding(.top, BCSpacing.md)
+
                     if let q = manager.currentQuestion {
                         Text(q.question)
                             .bcHeadline()
                             .foregroundStyle(Color.textPrimary)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, BCSpacing.xl)
-                            .padding(.vertical, 28)
+                            .padding(.bottom, 28)
+                            .padding(.top, 4)
                             .transition(.opacity.combined(with: .scale(scale: 0.97)))
                             .id(q.id)
                     } else {
@@ -437,7 +529,7 @@ struct VoiceQuizView: View {
                     }
 
                     if case .evaluating = manager.state {
-                        Text("Evaluating your answer…")
+                        Text("Scoring what you said…")
                             .bcCaption()
                             .foregroundStyle(Color.textTertiary)
                             .padding(.bottom, 8)
@@ -448,8 +540,16 @@ struct VoiceQuizView: View {
                 Divider()
                     .background(Color.glassStroke)
 
-                PulseRing(isListening: isListening, size: 48)
-                    .padding(.vertical, BCSpacing.xxl)
+                VStack(spacing: BCSpacing.sm) {
+                    Text(pulseSectionLabel)
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(Color.textTertiary)
+                        .textCase(.uppercase)
+                        .tracking(0.8)
+
+                    PulseRing(isListening: isListening, size: 52)
+                }
+                .padding(.vertical, BCSpacing.xl)
             }
             .glassCard()
             .padding(.horizontal, BCSpacing.xxl)
@@ -460,16 +560,36 @@ struct VoiceQuizView: View {
             WaveformView(amplitude: amplitude)
                 .frame(height: 40)
                 .padding(.horizontal, 40)
-                .opacity(amplitude > 0 ? 1 : 0.3)
+                .opacity(amplitude > 0 ? 1 : 0.28)
                 .animation(BCMotion.gentleEase, value: amplitude)
 
-            Text(manager.statusLabel)
-                .bcCaption()
-                .foregroundStyle(Color.textSecond)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 32)
-                .opacity(manager.statusLabel.isEmpty ? 0 : 1)
-                .animation(BCMotion.gentleEase, value: manager.statusLabel)
+            if let foot = sessionStatusFootnote {
+                Text(foot)
+                    .bcCaption()
+                    .foregroundStyle(Color.textSecond)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+                    .transition(.opacity)
+            }
+
+            if let err = manager.errorMessage {
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 13))
+                    Text(err)
+                        .bcCaption()
+                        .multilineTextAlignment(.leading)
+                }
+                .foregroundStyle(Color.textPrimary.opacity(0.92))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: BCRadius.control, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: BCRadius.control, style: .continuous)
+                        .strokeBorder(Color.bcAccent.opacity(0.25), lineWidth: 1)
+                )
+                .padding(.horizontal, BCSpacing.xxl)
+            }
 
             if let transport = manager.sessionTransportNote {
                 HStack(alignment: .top, spacing: 8) {

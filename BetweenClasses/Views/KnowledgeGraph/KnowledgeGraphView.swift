@@ -55,36 +55,7 @@ struct KnowledgeGraphView: View {
         }
         .safeAreaInset(edge: .top, spacing: BCSpacing.md) {
             BCChromeBar(title: "Knowledge graph") {
-                HStack(spacing: 14) {
-                    Button {
-                        sceneRef.triggerCameraReset()
-                    } label: {
-                        Image(systemName: "arrow.counterclockwise")
-                            .font(.system(size: 15, weight: .medium))
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(Color.textSecond)
-                    .accessibilityLabel("Reset camera")
-
-                    Button {
-                        localGraphFocus.toggle()
-                    } label: {
-                        Image(systemName: localGraphFocus ? "scope" : "globe")
-                            .font(.system(size: 15, weight: .medium))
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(localGraphFocus ? Color.textPrimary : Color.textSecond)
-                    .accessibilityLabel(localGraphFocus ? "Show full graph" : "Local graph focus")
-
-                    if selectedNode != nil {
-                        Button("Clear") {
-                            withAnimation(BCMotion.panelSpring) { selectedNode = nil }
-                        }
-                        .buttonStyle(.plain)
-                        .foregroundStyle(Color.textSecond)
-                        .accessibilityLabel("Clear selection")
-                    }
-                }
+                graphChromeTrailing
             }
             .padding(.horizontal, BCSpacing.gutter)
         }
@@ -230,19 +201,246 @@ struct KnowledgeGraphView: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "circle.hexagongrid")
-                .font(.system(size: 48, weight: .thin))
-                .foregroundStyle(Color.textTertiary)
-            Text("No data yet")
-                .bcHeadline()
-                .foregroundStyle(Color.textPrimary)
-            Text("Add notes and subjects to see your knowledge graph.")
-                .bcBody()
-                .foregroundStyle(Color.textSecond)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 40)
+        ZStack {
+            RadialGradient(
+                colors: [
+                    Color.bcAccent.opacity(0.16),
+                    Color.bcAccent.opacity(0.05),
+                    Color.clear,
+                ],
+                center: UnitPoint(x: 0.5, y: 0.34),
+                startRadius: 24,
+                endRadius: 320
+            )
+            .allowsHitTesting(false)
+
+            LinearGradient(
+                colors: [Color.clear, Color.bgPrimary.opacity(0.92)],
+                startPoint: .center,
+                endPoint: .bottom
+            )
+            .allowsHitTesting(false)
+
+            VStack(spacing: 0) {
+                Spacer(minLength: 28)
+
+                GlassCard(
+                    padding: EdgeInsets(top: 24, leading: 22, bottom: 26, trailing: 22)
+                ) {
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text("Your study map")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(Color.bcAccent)
+                            .tracking(1.35)
+
+                        Spacer().frame(height: 20)
+
+                        HStack {
+                            Spacer(minLength: 0)
+                            graphEmptyHero
+                            Spacer(minLength: 0)
+                        }
+                        .padding(.bottom, 22)
+
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Nothing to map yet")
+                                .bcTitle()
+                                .foregroundStyle(Color.textPrimary)
+
+                            (
+                                Text("Subjects, topics, and notes ")
+                                    + Text("connect visually ")
+                                    .foregroundStyle(Color.bcAccent.opacity(0.92))
+                                    + Text("so you can spot clusters and quiz from any node.")
+                            )
+                            .font(.bcBody)
+                            .tracking(-0.3)
+                            .foregroundStyle(Color.textSecond)
+                            .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.bottom, 22)
+
+                        VStack(spacing: 12) {
+                            Button {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                appState.selectedTab = .capture
+                            } label: {
+                                Text("Capture notes")
+                            }
+                            .buttonStyle(BCPrimaryButtonStyle())
+
+                            Text("Snap a page after class — new material appears here as nodes.")
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundStyle(Color.textTertiary)
+                                .tracking(0.25)
+                                .multilineTextAlignment(.leading)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+
+                            Button {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                appState.selectedTab = .schedule
+                            } label: {
+                                Text("Open schedule & sync")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(BCGhostButtonStyle())
+
+                            Text("Link Canvas so your classes label what you are mapping.")
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundStyle(Color.textTertiary)
+                                .tracking(0.25)
+                                .multilineTextAlignment(.leading)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    }
+                }
+                .padding(.horizontal, BCSpacing.gutter)
+                .opacity(appeared ? 1 : 0)
+                .offset(y: appeared ? 0 : 14)
+                .animation(BCMotion.panelSpring, value: appeared)
+
+                Spacer(minLength: 28)
+            }
         }
+    }
+
+    @ViewBuilder
+    private var graphChromeTrailing: some View {
+        if subjects.isEmpty {
+            GlassChip(
+                text: "Empty map",
+                textColor: Color.textSecond,
+                leadingSymbol: "circle.hexagongrid"
+            )
+            .accessibilityLabel("Knowledge graph is empty")
+            .accessibilityHint("Capture notes to populate the graph")
+        } else {
+            VStack(alignment: .trailing, spacing: 8) {
+                HStack(spacing: 10) {
+                    graphToolbarIconButton(
+                        systemName: "arrow.counterclockwise",
+                        isEmphasized: false,
+                        accessibilityLabel: "Reset view",
+                        accessibilityHint: "Re-centers the camera on the graph"
+                    ) {
+                        sceneRef.triggerCameraReset()
+                    }
+
+                    graphToolbarIconButton(
+                        systemName: localGraphFocus ? "scope" : "globe",
+                        isEmphasized: localGraphFocus,
+                        accessibilityLabel: localGraphFocus ? "Show entire graph" : "Focus neighbors",
+                        accessibilityHint: localGraphFocus
+                            ? "Shows all subjects and notes"
+                            : "Dims nodes that are not connected to the selection"
+                    ) {
+                        localGraphFocus.toggle()
+                    }
+
+                    if selectedNode != nil {
+                        Button {
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            withAnimation(BCMotion.panelSpring) { selectedNode = nil }
+                        } label: {
+                            Text("Clear")
+                                .font(.bcCaption)
+                                .fontWeight(.semibold)
+                                .foregroundStyle(Color.textSecond)
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 10)
+                                .background(
+                                    Capsule()
+                                        .fill(Color.white.opacity(0.05))
+                                )
+                                .overlay(
+                                    Capsule()
+                                        .strokeBorder(Color.glassStroke, lineWidth: 1)
+                                )
+                        }
+                        .buttonStyle(BCToolbarIconButtonStyle())
+                        .accessibilityLabel("Clear selection")
+                        .accessibilityHint("Dismisses the card and node highlight")
+                    }
+                }
+
+                Text("Drag to orbit · pinch to zoom · double-tap resets")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(Color.textTertiary)
+                    .multilineTextAlignment(.trailing)
+            }
+        }
+    }
+
+    private func graphToolbarIconButton(
+        systemName: String,
+        isEmphasized: Bool,
+        accessibilityLabel: String,
+        accessibilityHint: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(isEmphasized ? Color.textPrimary : Color.textSecond)
+                .frame(width: 40, height: 40)
+                .background(
+                    Circle()
+                        .fill(Color.bcAccentSubtle.opacity(isEmphasized ? 0.65 : 0.38))
+                )
+                .overlay(
+                    Circle()
+                        .strokeBorder(Color.glassStroke, lineWidth: 1)
+                )
+        }
+        .buttonStyle(BCToolbarIconButtonStyle())
+        .accessibilityLabel(Text(accessibilityLabel))
+        .accessibilityHint(Text(accessibilityHint))
+    }
+
+    private var graphEmptyHero: some View {
+        ZStack {
+            ForEach(0 ..< 3, id: \.self) { ring in
+                Circle()
+                    .stroke(
+                        Color.bcAccent.opacity(0.11 - Double(ring) * 0.028),
+                        lineWidth: 1
+                    )
+                    .frame(width: 76 + CGFloat(ring) * 38, height: 76 + CGFloat(ring) * 38)
+            }
+
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [
+                            Color.bcAccent.opacity(0.28),
+                            Color.bcAccent.opacity(0.06),
+                        ],
+                        center: .center,
+                        startRadius: 0,
+                        endRadius: 52
+                    )
+                )
+                .frame(width: 84, height: 84)
+                .overlay {
+                    Circle()
+                        .strokeBorder(
+                            LinearGradient(
+                                colors: [Color.white.opacity(0.22), Color.white.opacity(0.05)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1
+                        )
+                }
+                .shadow(color: Color.bcAccent.opacity(0.12), radius: 20, y: 8)
+
+            Image(systemName: "circle.hexagongrid")
+                .font(.system(size: 34, weight: .thin))
+                .foregroundStyle(Color.bcAccent.opacity(0.88))
+                .symbolRenderingMode(.hierarchical)
+        }
+        .accessibilityHidden(true)
     }
 }
 

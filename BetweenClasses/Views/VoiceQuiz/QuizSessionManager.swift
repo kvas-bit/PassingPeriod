@@ -32,6 +32,11 @@ final class QuizSessionManager {
     private var modelContext: ModelContext?
     private var activeRunToken = UUID()
     private var prefetchTask: Task<Void, Never>?
+    private var listenWatchdog: Task<Void, Never>?
+    /// Retries when `startListening` fails (permissions, audio session).
+    private var listenStartAttempts = 0
+    /// Retries when the user’s answer is empty after silence / end of recognition.
+    private var emptyAnswerAttempts = 0
 
     func configure(modelContext: ModelContext) {
         self.modelContext = modelContext
@@ -41,6 +46,8 @@ final class QuizSessionManager {
         guard !isPreparingQuiz else { return }
         errorMessage = nil
         sessionTransportNote = nil
+        listenStartAttempts = 0
+        emptyAnswerAttempts = 0
         isPreparingQuiz = true
         let runToken = UUID()
         activeRunToken = runToken
@@ -101,7 +108,7 @@ final class QuizSessionManager {
         modelContext?.insert(sess)
         session = sess
 
-        await runQuestion(at: 0, runToken: runToken)
+        await runQuestion(at: 0, runToken: runToken, skipSpeak: false)
     }
 
     func stop() {
@@ -109,6 +116,8 @@ final class QuizSessionManager {
         isPreparingQuiz = false
         prefetchTask?.cancel()
         prefetchTask = nil
+        listenWatchdog?.cancel()
+        listenWatchdog = nil
         tts.stop()
         tts.clearCache()
         _ = stt.stopListening()
@@ -191,62 +200,88 @@ final class QuizSessionManager {
 
     // MARK: - State machine
 
-    private func runQuestion(at index: Int, runToken: UUID) async {
+    private func runQuestion(at index: Int, runToken: UUID, skipSpeak: Bool) async {
         guard activeRunToken == runToken else { return }
         guard index < questions.count else {
             finishSession(runToken: runToken)
             return
         }
 
+        listenWatchdog?.cancel()
+        listenWatchdog = nil
+
+        if !skipSpeak {
+            listenStartAttempts = 0
+            emptyAnswerAttempts = 0
+        }
+
         currentIndex = index
         currentQuestion = questions[index]
         guard let q = currentQuestion else { return }
 
-        // Speak the question
-        state = .speaking
-        statusLabel = q.question   // Always display question text on screen
+        if !skipSpeak {
+            // Speak the question
+            state = .speaking
+            statusLabel = q.question   // Always display question text on screen
 
-        let intro = index == 0 ? "Let's review. " : ""
-        let questionText = "\(intro)Question \(index + 1). \(q.question)"
+            let intro = index == 0 ? "Let's review. " : ""
+            let questionText = "\(intro)Question \(index + 1). \(q.question)"
 
-        var ttsFailed = false
-        do {
-            // Observe TTS amplitude
-            Task {
-                while case .speaking = self.state {
-                    self.ttsAmplitude = self.tts.amplitude
-                    try? await Task.sleep(for: .milliseconds(50))
+            var ttsFailed = false
+            do {
+                // Observe TTS amplitude
+                Task {
+                    while case .speaking = self.state {
+                        self.ttsAmplitude = self.tts.amplitude
+                        try? await Task.sleep(for: .milliseconds(50))
+                    }
+                    self.ttsAmplitude = 0
                 }
-                self.ttsAmplitude = 0
+                try await tts.speak(questionText, model: GeminiTTSService.questionModel)
+                sessionTransportNote = tts.lastTransportDiagnostic
+            } catch {
+                // Issue B: TTS failure — show question text (already set in statusLabel) and
+                // wait a short delay before transitioning to listening so user can read it.
+                ttsFailed = true
+                sessionTransportNote = tts.lastTransportDiagnostic ?? error.localizedDescription
             }
-            try await tts.speak(questionText, model: GeminiTTSService.questionModel)
-            sessionTransportNote = tts.lastTransportDiagnostic
-        } catch {
-            // Issue B: TTS failure — show question text (already set in statusLabel) and
-            // wait a short delay before transitioning to listening so user can read it.
-            ttsFailed = true
-            sessionTransportNote = tts.lastTransportDiagnostic ?? error.localizedDescription
-        }
 
-        // Issue D: AVAudioSession conflict — add delay after TTS before starting mic
-        if !ttsFailed {
-            try? await Task.sleep(for: .milliseconds(300))
+            // Issue D: AVAudioSession conflict — add delay after TTS before starting mic
+            if !ttsFailed {
+                try? await Task.sleep(for: .milliseconds(300))
+            } else {
+                // Longer pause when TTS failed so user has time to read the question
+                try? await Task.sleep(for: .milliseconds(1500))
+            }
+
+            guard activeRunToken == runToken else { return }
         } else {
-            // Longer pause when TTS failed so user has time to read the question
-            try? await Task.sleep(for: .milliseconds(1500))
+            statusLabel = q.question
         }
-
-        guard activeRunToken == runToken else { return }
 
         // Listen for answer
         state = .listening
-        statusLabel = "Listening…"
+        if emptyAnswerAttempts > 0 {
+            statusLabel = "Listening again…"
+        } else {
+            statusLabel = "Listening… (pauses after a few seconds of silence)"
+        }
 
         do {
             try stt.startListening { [weak self] transcript in
                 guard let self else { return }
                 Task {
                     await self.handleAnswer(transcript: transcript, question: q, index: index, runToken: runToken)
+                }
+            }
+            listenWatchdog = Task { [weak self] in
+                try? await Task.sleep(for: .seconds(50))
+                await MainActor.run {
+                    guard let self else { return }
+                    guard self.activeRunToken == runToken else { return }
+                    guard case .listening = self.state else { return }
+                    let t = self.stt.stopListening()
+                    Task { await self.handleAnswer(transcript: t, question: q, index: index, runToken: runToken) }
                 }
             }
             // Observe mic amplitude
@@ -258,13 +293,58 @@ final class QuizSessionManager {
                 self.micAmplitude = 0
             }
         } catch {
-            // Can't listen — skip this question and move on
-            await runQuestion(at: index + 1, runToken: runToken)
+            let hint = speechListenErrorHint(for: error)
+            if listenStartAttempts < 2 {
+                listenStartAttempts += 1
+                errorMessage = "\(hint) Retrying… (\(listenStartAttempts)/2)"
+                try? await Task.sleep(for: .milliseconds(700))
+                guard activeRunToken == runToken else { return }
+                errorMessage = nil
+                await runQuestion(at: index, runToken: runToken, skipSpeak: true)
+            } else {
+                errorMessage = hint
+                listenStartAttempts = 0
+                try? await Task.sleep(for: .milliseconds(400))
+                guard activeRunToken == runToken else { return }
+                errorMessage = nil
+                await runQuestion(at: index + 1, runToken: runToken, skipSpeak: false)
+            }
         }
+    }
+
+    private func speechListenErrorHint(for error: Error) -> String {
+        if let speech = error as? SpeechError {
+            switch speech {
+            case .notAuthorized:
+                return "Speech recognition needs permission. On iPhone: Settings → Between Classes → enable Microphone and Speech Recognition."
+            case .recognizerUnavailable:
+                return "Speech recognition is off or unavailable on this device."
+            case .requestFailed:
+                return "Could not start speech capture. Check the microphone and try again."
+            }
+        }
+        return "Could not use the microphone for this question. \(error.localizedDescription)"
     }
 
     private func handleAnswer(transcript: String, question: QuizQuestion, index: Int, runToken: UUID) async {
         guard activeRunToken == runToken else { return }
+        listenWatchdog?.cancel()
+        listenWatchdog = nil
+
+        let trimmed = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty && emptyAnswerAttempts < 2 {
+            emptyAnswerAttempts += 1
+            errorMessage = "Didn’t catch an answer — try speaking a bit closer to the mic."
+            try? await Task.sleep(for: .milliseconds(500))
+            guard activeRunToken == runToken else { return }
+            errorMessage = nil
+            await runQuestion(at: index, runToken: runToken, skipSpeak: true)
+            return
+        }
+        if !trimmed.isEmpty {
+            emptyAnswerAttempts = 0
+        }
+
         state = .evaluating
         statusLabel = "Evaluating…"
         micAmplitude = 0
@@ -312,7 +392,7 @@ final class QuizSessionManager {
         guard activeRunToken == runToken else { return }
 
         // Issue E: properly increment and detect end
-        await runQuestion(at: index + 1, runToken: runToken)
+        await runQuestion(at: index + 1, runToken: runToken, skipSpeak: false)
     }
 
     private func finishSession(runToken: UUID) {
