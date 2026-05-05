@@ -1,5 +1,6 @@
 import SwiftUI
 import AVFoundation
+import UIKit
 
 struct NoteCaptureView: View {
     @State private var capturedImage: Data?
@@ -13,9 +14,13 @@ struct NoteCaptureView: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            // Camera fills full screen edge-to-edge
-            CameraPreviewView(captureRequested: $captureRequested, onCapture: handleCapture)
-                .ignoresSafeArea()
+            ZStack {
+                CameraPreviewView(captureRequested: $captureRequested, onCapture: handleCapture)
+                    .ignoresSafeArea()
+                DocumentCaptureGuideOverlay()
+                    .ignoresSafeArea()
+                    .allowsHitTesting(false)
+            }
 
             // Controls float above tab bar — 83pt clears the custom tab bar on all iPhones
             captureControls
@@ -69,15 +74,36 @@ struct NoteCaptureView: View {
 
             Spacer()
 
-            Button { captureRequested = true } label: {
+            Button {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                captureRequested = true
+            } label: {
                 ZStack {
                     Circle()
-                        .strokeBorder(Color.white.opacity(0.25), lineWidth: 2)
-                        .frame(width: 82, height: 82)
+                        .strokeBorder(Color.white.opacity(0.42), lineWidth: 3)
+                        .frame(width: 94, height: 94)
                     Circle()
-                        .fill(Color.white)
-                        .frame(width: 66, height: 66)
-                        .shadow(color: Color.black.opacity(0.35), radius: 12, y: 6)
+                        .strokeBorder(LinearGradient(
+                            colors: [Color.white.opacity(0.65), Color.white.opacity(0.2)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ), lineWidth: 1.5)
+                        .frame(width: 84, height: 84)
+                    Circle()
+                        .fill(Color.accentPrimary)
+                        .frame(width: 68, height: 68)
+                        .shadow(color: Color.black.opacity(0.42), radius: 16, y: 8)
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                colors: [Color.white.opacity(0.28), Color.clear],
+                                center: .topLeading,
+                                startRadius: 2,
+                                endRadius: 48
+                            )
+                        )
+                        .frame(width: 68, height: 68)
+                        .allowsHitTesting(false)
                 }
             }
             .buttonStyle(.plain)
@@ -141,6 +167,80 @@ struct NoteCaptureView: View {
     private func handlePickedPhoto(_ data: Data?) {
         guard let data else { return }
         handleCapture(data)
+    }
+}
+
+// MARK: - On-camera framing guide
+
+private struct DocumentCaptureGuideOverlay: View {
+    private let bracketLength: CGFloat = 28
+    private let lineWidth: CGFloat = 2.5
+
+    var body: some View {
+        GeometryReader { geo in
+            let sideInset = geo.size.width * 0.1
+            let frameWidth = max(geo.size.width - sideInset * 2, 120)
+            let frameHeight = min(frameWidth * 4.0 / 3.0, geo.size.height * 0.5)
+            let origin = CGPoint(
+                x: (geo.size.width - frameWidth) / 2,
+                y: geo.size.height * 0.34 - frameHeight / 2
+            )
+            let frameRect = CGRect(origin: origin, size: CGSize(width: frameWidth, height: frameHeight))
+
+            ZStack(alignment: .top) {
+                LinearGradient(
+                    colors: [Color.black.opacity(0.52), Color.black.opacity(0.12), Color.clear],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .frame(height: 108)
+                .allowsHitTesting(false)
+
+                VStack {
+                    Text("Fill the frame with your note")
+                        .bcCaption()
+                        .foregroundStyle(Color.textPrimary.opacity(0.9))
+                        .padding(.top, geo.safeAreaInsets.top + 10)
+                    Spacer()
+                }
+                .allowsHitTesting(false)
+
+                BracketCornersPath(rect: frameRect, cornerLength: bracketLength)
+                    .stroke(Color.white.opacity(0.58), style: StrokeStyle(lineWidth: lineWidth, lineCap: .round, lineJoin: .round))
+                    .shadow(color: Color.black.opacity(0.35), radius: 4, y: 2)
+                    .frame(width: geo.size.width, height: geo.size.height, alignment: .topLeading)
+            }
+        }
+    }
+}
+
+private struct BracketCornersPath: Shape {
+    let rect: CGRect
+    var cornerLength: CGFloat
+
+    func path(in _: CGRect) -> Path {
+        var p = Path()
+        let r = rect
+        let L = cornerLength
+        let c = min(L, r.width / 2.2, r.height / 2.2)
+
+        p.move(to: CGPoint(x: r.minX, y: r.minY + c))
+        p.addLine(to: CGPoint(x: r.minX, y: r.minY))
+        p.addLine(to: CGPoint(x: r.minX + c, y: r.minY))
+
+        p.move(to: CGPoint(x: r.maxX - c, y: r.minY))
+        p.addLine(to: CGPoint(x: r.maxX, y: r.minY))
+        p.addLine(to: CGPoint(x: r.maxX, y: r.minY + c))
+
+        p.move(to: CGPoint(x: r.maxX, y: r.maxY - c))
+        p.addLine(to: CGPoint(x: r.maxX, y: r.maxY))
+        p.addLine(to: CGPoint(x: r.maxX - c, y: r.maxY))
+
+        p.move(to: CGPoint(x: r.minX + c, y: r.maxY))
+        p.addLine(to: CGPoint(x: r.minX, y: r.maxY))
+        p.addLine(to: CGPoint(x: r.minX, y: r.maxY - c))
+
+        return p
     }
 }
 

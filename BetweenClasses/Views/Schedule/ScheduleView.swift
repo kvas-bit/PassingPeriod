@@ -30,28 +30,42 @@ struct ScheduleView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     if !subjects.isEmpty {
-                        Button {
-                            confirmDeleteAll = true
-                        } label: {
-                            Image(systemName: "trash")
-                                .foregroundStyle(Color.textSecond)
+                        HStack(spacing: 16) {
+                            Button {
+                                showSettings = true
+                            } label: {
+                                Image(systemName: "gearshape")
+                                    .foregroundStyle(Color.textSecond)
+                            }
+                            .accessibilityLabel("Canvas and iCal connection settings")
+
+                            Button {
+                                confirmDeleteAll = true
+                            } label: {
+                                Image(systemName: "trash")
+                                    .foregroundStyle(Color.textSecond)
+                            }
+                            .accessibilityLabel("Delete all classes")
                         }
-                        .accessibilityLabel("Delete all classes")
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         Task { await refresh() }
                     } label: {
-                        Image(systemName: isRefreshing ? "arrow.clockwise.circle" : "arrow.clockwise")
-                            .rotationEffect(.degrees(isRefreshing ? 360 : 0))
-                            .animation(
-                                isRefreshing ? .linear(duration: 1).repeatForever(autoreverses: false) : .default,
-                                value: isRefreshing
-                            )
-                            .foregroundStyle(Color.textSecond)
+                        Group {
+                            if isRefreshing {
+                                ProgressView()
+                                    .tint(Color.textSecond)
+                                    .scaleEffect(0.95)
+                            } else {
+                                Image(systemName: "arrow.clockwise")
+                                    .foregroundStyle(Color.textSecond)
+                            }
+                        }
                     }
-                    .accessibilityLabel("Refresh schedule")
+                    .disabled(isRefreshing)
+                    .accessibilityLabel(isRefreshing ? "Refreshing schedule" : "Refresh schedule")
                 }
             }
             .toolbarBackground(Color.bgPrimary, for: .navigationBar)
@@ -82,15 +96,39 @@ struct ScheduleView: View {
 
     private var subjectList: some View {
         ScrollView(showsIndicators: false) {
-            LazyVStack(spacing: BCSpacing.sm) {
-                ForEach(Array(subjects.enumerated()), id: \.element.id) { index, subject in
-                    ClassRowView(subject: subject)
-                        .offset(y: appeared ? 0 : 16)
-                        .opacity(appeared ? 1 : 0)
-                        .animation(
-                            BCMotion.panelSpring.delay(Double(index) * 0.04),
-                            value: appeared
-                        )
+            VStack(alignment: .leading, spacing: BCSpacing.md) {
+                connectionSourcesCard
+
+                if isRefreshing {
+                    HStack(spacing: 10) {
+                        ProgressView()
+                            .tint(Color.textSecond)
+                            .scaleEffect(0.9)
+                        Text("Syncing Canvas and calendar…")
+                            .bcCaption()
+                            .foregroundStyle(Color.textSecond)
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.horizontal, BCSpacing.md)
+                    .padding(.vertical, 10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.bgSurface.opacity(0.65), in: RoundedRectangle(cornerRadius: BCRadius.control, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: BCRadius.control, style: .continuous)
+                            .strokeBorder(Color.glassStroke, lineWidth: 1)
+                    )
+                }
+
+                LazyVStack(spacing: BCSpacing.sm) {
+                    ForEach(Array(subjects.enumerated()), id: \.element.id) { index, subject in
+                        ClassRowView(subject: subject)
+                            .offset(y: appeared ? 0 : 16)
+                            .opacity(appeared ? 1 : 0)
+                            .animation(
+                                BCMotion.panelSpring.delay(Double(index) * 0.04),
+                                value: appeared
+                            )
+                    }
                 }
             }
             .padding(.horizontal, BCSpacing.gutter)
@@ -98,6 +136,40 @@ struct ScheduleView: View {
         }
         .background(Color.bgPrimary)
         .refreshable { await refresh() }
+    }
+
+    private var connectionSourcesCard: some View {
+        Button {
+            showSettings = true
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "link.circle.fill")
+                    .font(.system(size: 20, weight: .regular))
+                    .foregroundStyle(Color.textSecond)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Connections")
+                        .bcCaption()
+                        .foregroundStyle(Color.textPrimary.opacity(0.92))
+                    Text("Canvas token · iCal URL")
+                        .font(.system(size: 11, weight: .medium))
+                        .tracking(0.35)
+                        .foregroundStyle(Color.textTertiary)
+                }
+                Spacer(minLength: 8)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Color.textTertiary)
+            }
+            .padding(.horizontal, BCSpacing.md)
+            .padding(.vertical, 12)
+            .background(Color.bgSurface.opacity(0.55), in: RoundedRectangle(cornerRadius: BCRadius.panel, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: BCRadius.panel, style: .continuous)
+                    .strokeBorder(Color.glassStroke, lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Open Canvas and iCal connection settings")
     }
 
     private var emptyState: some View {
@@ -124,6 +196,16 @@ struct ScheduleView: View {
             .buttonStyle(BCPrimaryButtonStyle())
             .padding(.horizontal, BCSpacing.xxl)
             .padding(.top, 4)
+
+            Button {
+                showSettings = true
+            } label: {
+                Text("Canvas token or iCal URL")
+            }
+            .buttonStyle(.plain)
+            .bcCaption()
+            .foregroundStyle(Color.textSecond)
+            .padding(.top, 10)
         }
     }
 
