@@ -11,6 +11,10 @@ struct HomeView: View {
     @State private var showIntegrations = false
     @State private var showAllNotes = false
 
+    private var canvasLinked: Bool {
+        KeychainService.exists(KeychainKey.canvasToken)
+    }
+
     private var nextSubject: Subject? {
         subjects
             .compactMap { s -> (Subject, Int)? in
@@ -47,30 +51,52 @@ struct HomeView: View {
 
                 // MARK: Header
                 HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: 4) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Between Classes")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(Color.bcAccent)
+                            .tracking(1.4)
+
                         Text("\(greeting)")
-                            .bcDisplay()
+                            .bcDisplayLarge()
                             .foregroundStyle(Color.textPrimary)
+
                         Text(dateString)
                             .bcBody()
                             .foregroundStyle(Color.textSecond)
                     }
-                    Spacer()
-                    HStack(spacing: 8) {
-                        GlassChip(text: formattedDate())
-                        Button { showIntegrations = true } label: {
-                            Image(systemName: "link.circle.fill")
-                                .font(.system(size: 17))
-                                .foregroundStyle(Color.textSecond)
-                                .frame(width: 38, height: 38)
-                                .glassCard(cornerRadius: BCRadius.control)
+
+                    Spacer(minLength: 12)
+
+                    VStack(alignment: .trailing, spacing: 8) {
+                        GlassChip(text: formattedDate(), textColor: Color.textPrimary)
+
+                        Button {
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            showIntegrations = true
+                        } label: {
+                            Image(systemName: canvasLinked ? "link.circle.fill" : "link.badge.plus")
+                                .font(.system(size: 18, weight: .medium))
+                                .foregroundStyle(canvasLinked ? Color.bcAccent : Color.textSecond)
+                                .frame(width: 42, height: 42)
+                                .background(
+                                    Circle().fill(Color.bcAccentSubtle.opacity(canvasLinked ? 0.65 : 0.35))
+                                )
+                                .overlay(
+                                    Circle()
+                                        .strokeBorder(Color.glassStroke, lineWidth: 1)
+                                )
                         }
                         .buttonStyle(.plain)
-                        .accessibilityLabel("Canvas and calendar")
-                        .accessibilityHint("Opens connections to sync your schedule")
+                        .accessibilityLabel(canvasLinked ? "Connections — Canvas linked" : "Connections — set up Canvas and calendar")
+                        .accessibilityHint("Opens connections to sync your schedule and API keys")
                     }
                 }
                 .padding(.top, 20)
+
+                if !canvasLinked {
+                    connectBanner
+                }
 
                 // MARK: Next Class Card
                 if let subject = nextSubject {
@@ -79,7 +105,7 @@ struct HomeView: View {
                         .opacity(appeared ? 1 : 0)
                         .animation(BCMotion.panelSpring.delay(0.05), value: appeared)
                 } else {
-                    EmptyNextClassCard()
+                    EmptyNextClassCard(onConnect: { showIntegrations = true })
                         .offset(y: appeared ? 0 : 20)
                         .opacity(appeared ? 1 : 0)
                         .animation(BCMotion.panelSpring.delay(0.05), value: appeared)
@@ -132,8 +158,8 @@ struct HomeView: View {
 
                 // MARK: Quick Stats
                 HStack(spacing: 12) {
-                    GlassChip(text: "\(appState.quizStreak) day streak", leadingSymbol: "flame.fill")
-                    GlassChip(text: "\(appState.sessionsToday) sessions today", leadingSymbol: "waveform.path")
+                    GlassChip(text: "\(appState.quizStreak) day streak", leadingSymbol: "flame.fill", symbolColor: Color.bcAccent.opacity(0.9))
+                    GlassChip(text: "\(appState.sessionsToday) sessions today", leadingSymbol: "waveform.path", symbolColor: Color.bcAccent.opacity(0.85))
                     Spacer()
                 }
                 .offset(y: appeared ? 0 : 20)
@@ -173,12 +199,23 @@ struct HomeView: View {
                         .bcBody()
                         .foregroundStyle(Color.textSecond)
                     Button {
+                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                         appState.selectedTab = .capture
                     } label: {
                         Text("Open capture")
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(BCPrimaryButtonStyle())
+
+                    if !canvasLinked {
+                        Button {
+                            showIntegrations = true
+                        } label: {
+                            Text("Connect Canvas first")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(BCGhostButtonStyle())
+                    }
                 }
             }
         }
@@ -191,6 +228,47 @@ struct HomeView: View {
         let f = DateFormatter()
         f.dateFormat = "MMM d"
         return f.string(from: Date())
+    }
+
+    private var connectBanner: some View {
+        Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            showIntegrations = true
+        } label: {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "link.badge.plus")
+                    .font(.system(size: 20, weight: .medium))
+                    .foregroundStyle(Color.bcAccent)
+                    .frame(width: 36, height: 36)
+                    .background(Color.bcAccentSubtle, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Connect Canvas")
+                        .bcBodyStrong()
+                        .foregroundStyle(Color.textPrimary)
+                    Text("Pulls in subjects and unlocks schedule-aware study. You can still capture notes without it.")
+                        .bcCaption()
+                        .foregroundStyle(Color.textTertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Color.textTertiary)
+                    .padding(.top, 4)
+            }
+            .padding(BCSpacing.lg)
+            .background(Color.bgSurface.opacity(0.55), in: RoundedRectangle(cornerRadius: BCRadius.card, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: BCRadius.card, style: .continuous)
+                    .strokeBorder(
+                        LinearGradient(colors: [Color.bcAccent.opacity(0.35), Color.glassStroke], startPoint: .topLeading, endPoint: .bottomTrailing),
+                        lineWidth: 1
+                    )
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint("Open the connection and API key screen")
     }
 }
 
@@ -262,17 +340,49 @@ private struct NextClassCard: View {
 }
 
 private struct EmptyNextClassCard: View {
+    @Environment(AppState.self) private var appState
+    var onConnect: () -> Void
+
     var body: some View {
         GlassCard {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("No class scheduled")
-                    .bcHeadline()
-                    .foregroundStyle(Color.textPrimary)
-                Text("Connect Canvas or add your schedule to get started.")
-                    .bcBody()
-                    .foregroundStyle(Color.textSecond)
+            VStack(alignment: .leading, spacing: BCSpacing.md) {
+                HStack(spacing: 10) {
+                    Image(systemName: "calendar.badge.clock")
+                        .font(.system(size: 26, weight: .thin))
+                        .foregroundStyle(Color.bcAccent.opacity(0.85))
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("No class scheduled")
+                            .bcTitle()
+                            .foregroundStyle(Color.textPrimary)
+                        Text("Sync Canvas and optional iCal so we can nudge you between periods.")
+                            .bcBody()
+                            .foregroundStyle(Color.textSecond)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+
+                Button {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    onConnect()
+                } label: {
+                    Text("Open connections")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(BCPrimaryButtonStyle())
+
+                Button {
+                    appState.selectedTab = .schedule
+                } label: {
+                    Text("View schedule tab")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(BCGhostButtonStyle())
             }
         }
+        .overlay(
+            RoundedRectangle(cornerRadius: BCRadius.card, style: .continuous)
+                .stroke(Color.bcAccent.opacity(0.12), lineWidth: 1)
+        )
     }
 }
 

@@ -30,7 +30,8 @@ struct TabBarView: View {
                         .strokeBorder(
                             LinearGradient(
                                 colors: [
-                                    Color.white.opacity(0.16),
+                                    Color.white.opacity(0.18),
+                                    Color.bcAccent.opacity(0.08),
                                     Color.white.opacity(0.04)
                                 ],
                                 startPoint: .topLeading,
@@ -39,7 +40,7 @@ struct TabBarView: View {
                             lineWidth: 1
                         )
                 }
-                .shadow(color: Color.black.opacity(0.55), radius: 28, x: 0, y: 14)
+                .shadow(color: BCShadow.dock.color, radius: BCShadow.dock.radius, x: 0, y: BCShadow.dock.y)
         }
         .padding(.horizontal, BCSpacing.lg)
         .padding(.bottom, 10)
@@ -57,21 +58,22 @@ private struct TabBarItem: View {
                 ZStack {
                     if isSelected {
                         RoundedRectangle(cornerRadius: 10)
-                            .fill(Color.white.opacity(0.1))
+                            .fill(Color.bcAccentSubtle)
                             .frame(width: 44, height: 28)
-                            .blur(radius: 4)
+                            .blur(radius: 6)
                     }
 
                     Image(systemName: tab.icon)
                         .font(.system(size: 19, weight: isSelected ? .semibold : .regular))
-                        .foregroundStyle(isSelected ? .white : .white.opacity(0.4))
-                        .scaleEffect(isSelected ? 1.05 : 1.0)
+                        .foregroundStyle(isSelected ? Color.bcAccent : .white.opacity(0.4))
+                        .symbolRenderingMode(.hierarchical)
+                        .scaleEffect(isSelected ? 1.06 : 1.0)
                 }
                 .frame(height: 28)
 
                 Text(tab.label)
                     .font(.system(size: 10, weight: isSelected ? .semibold : .regular))
-                    .foregroundStyle(isSelected ? .white : .white.opacity(0.4))
+                    .foregroundStyle(isSelected ? Color.bcAccent : .white.opacity(0.4))
                     .tracking(0.2)
             }
             .frame(maxWidth: .infinity)

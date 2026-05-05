@@ -24,3 +24,12 @@ enum BCMotion {
     static let microSpring = Animation.spring(response: 0.24, dampingFraction: 0.72)
     static let gentleEase = Animation.easeInOut(duration: 0.22)
 }
+
+/// Depth tokens — use sparingly for floating chrome and cards.
+enum BCShadow {
+    static let chrome = (color: Color.black.opacity(0.42), radius: CGFloat(20), y: CGFloat(10))
+    static let lift = (color: Color.black.opacity(0.38), radius: CGFloat(16), y: CGFloat(8))
+    static let card = (color: Color.black.opacity(0.50), radius: CGFloat(24), y: CGFloat(12))
+    static let dock = (color: Color.black.opacity(0.55), radius: CGFloat(28), y: CGFloat(14))
+    static let accentGlow = (color: Color.bcAccent.opacity(0.18), radius: CGFloat(12), y: CGFloat(4))
+}

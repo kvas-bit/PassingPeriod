@@ -13,11 +13,21 @@ extension Color {
     static let textTertiary = Color.white.opacity(0.25)
 
     // Glass
-    static let glassStroke = Color.white.opacity(0.08)
-    static let glassFill   = Color.white.opacity(0.04)
+    static let glassStroke = Color.white.opacity(0.10)
+    static let glassFill   = Color.white.opacity(0.045)
+    static let glassStrokeOuter = Color.white.opacity(0.06)
 
-    // Accent (monochrome — white fills on dark)
-    static let accentPrimary = Color.white
+    /// Single brand accent — ice blue tuned for contrast on near-black.
+    static let bcAccent = Color(hex: "#5EB8FF")
+    /// Text / icons placed directly on the accent fill.
+    static let accentOnAccent = Color(hex: "#050607")
+    /// Subtle accent wash (chips, focus rings, selection).
+    static let bcAccentSubtle = Color.bcAccent.opacity(0.14)
+    /// Pressed / highlighted control surface.
+    static let bcAccentMuted = Color.bcAccent.opacity(0.22)
+
+    /// Primary interactive emphasis (replaces flat white as the main CTA hue).
+    static var accentPrimary: Color { bcAccent }
 
     private static let mutedBaseHues: [Double] = [0.58, 0.61, 0.64, 0.69, 0.74, 0.79, 0.83, 0.91]
     private static let monochromeSubjectHex = "#D3D7DE"

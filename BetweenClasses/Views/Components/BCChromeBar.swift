@@ -11,29 +11,51 @@ struct BCChromeBar<Trailing: View>: View {
     }
 
     var body: some View {
-        HStack(alignment: .center) {
-            Text(title)
-                .font(.bcCaption)
-                .foregroundStyle(Color.textSecond)
-                .textCase(.uppercase)
-                .tracking(1.0)
-            Spacer()
-            trailing()
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .center) {
+                Text(title)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Color.textSecond)
+                    .textCase(.uppercase)
+                    .tracking(1.15)
+                Spacer()
+                trailing()
+            }
+            .padding(.horizontal, BCSpacing.xl)
+            .padding(.top, BCSpacing.md)
+            .padding(.bottom, BCSpacing.sm)
+
+            Rectangle()
+                .fill(
+                    LinearGradient(
+                        colors: [Color.bcAccent.opacity(0.55), Color.bcAccent.opacity(0.08)],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .frame(height: 1)
+                .padding(.horizontal, BCSpacing.xl)
+                .padding(.bottom, BCSpacing.sm)
         }
-        .padding(.horizontal, BCSpacing.xl)
-        .padding(.vertical, BCSpacing.md)
         .background {
             RoundedRectangle(cornerRadius: BCRadius.panel, style: .continuous)
                 .fill(.ultraThinMaterial)
                 .background {
                     RoundedRectangle(cornerRadius: BCRadius.panel, style: .continuous)
-                        .fill(Color.bgSurface.opacity(0.65))
+                        .fill(Color.bgSurface.opacity(0.72))
                 }
                 .overlay {
                     RoundedRectangle(cornerRadius: BCRadius.panel, style: .continuous)
-                        .strokeBorder(Color.white.opacity(0.1), lineWidth: 1)
+                        .strokeBorder(
+                            LinearGradient(
+                                colors: [Color.white.opacity(0.14), Color.white.opacity(0.05)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1
+                        )
                 }
         }
-        .shadow(color: Color.black.opacity(0.35), radius: 16, x: 0, y: 8)
+        .shadow(color: BCShadow.chrome.color, radius: BCShadow.chrome.radius, x: 0, y: BCShadow.chrome.y)
     }
 }
