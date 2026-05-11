@@ -471,6 +471,20 @@ struct VoiceQuizView: View {
                 .opacity(manager.statusLabel.isEmpty ? 0 : 1)
                 .animation(BCMotion.gentleEase, value: manager.statusLabel)
 
+            if let transport = manager.sessionTransportNote {
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "waveform.badge.magnifyingglass")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(Color.textTertiary)
+                    Text(transport)
+                        .bcCaption()
+                        .foregroundStyle(Color.textTertiary)
+                        .multilineTextAlignment(.center)
+                }
+                .padding(.horizontal, 28)
+                .padding(.top, 4)
+            }
+
             Spacer()
 
             Button("End session") {
